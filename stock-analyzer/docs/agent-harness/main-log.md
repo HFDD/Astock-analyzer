@@ -1,0 +1,39 @@
+# Main Log
+
+- 260521 Started strategy exit prompt feature using multi-agent harness.
+- 260521 Split backend and frontend implementation scopes.
+- 260521 Added optional cost-price input and cost-aware holding exit rules.
+- 260521 Verified script tests, API responses, and browser rendering on temporary port 8898.
+- 260521 2349 Started position strategy UI feature using multi-agent harness.
+- 260521 2349 Split backend strategy/API and frontend UI write scopes.
+- 260522 0006 Backend worker Sartre DONE_WITH_CONCERNS: py_compile/import/direct probes passed; pytest unavailable.
+- 260522 0008 Frontend worker Helmholtz DONE_WITH_CONCERNS: static template checks passed; browser smoke pending.
+- 260522 0008 Dispatching backend spec, frontend UI, and integration quality tester agents.
+- 260522 0010 Backend spec reviewer Pasteur FAIL: missing API-level tests for route contracts.
+- 260522 0011 Frontend UI reviewer Rawls PASS: 0 issues.
+- 260522 0015 Integration reviewer Ramanujan FAIL: technical_action object rendered as [object Object].
+- 260522 0018 Backend repair round 1 complete: API-level TestClient tests added.
+- 260522 0018 Frontend repair round 1 complete: technical_action object formatter added.
+- 260522 0021 Backend spec re-review Pasteur PASS: 0 issues.
+- 260522 0021 Integration re-review Ramanujan PASS: 0 issues.
+- 260522 0021 Final local verification passed except pytest unavailable in local python3 environment.
+- 260522 Started requested T+1/ETF/date-selector feature using multi-agent harness.
+- 260522 Wrote backend contract tests for T+1 trade eligibility, Chinese decisions, ETF exclusion, and next-trading-day guidance.
+- 260522 Dispatched backend worker Chandrasekhar for analyzer/data_fetcher changes.
+- 260522 Dispatched frontend worker Aquinas for index.html interaction/rendering changes.
+- 260522 Backend worker Chandrasekhar DONE: analyzer/data_fetcher contract implemented; targeted tests passed.
+- 260522 Frontend worker Aquinas DONE: date selector, watchlist jump, strategy details UI implemented; static checks passed.
+- 260522 Orchestrator repair: removed remaining T+1 hint copy from analyze form.
+- 260522 Final reviewer Popper PASS: 0 issues, report copied into stock-analyzer/docs/agent-harness/test-reports/t1-etf-final-review.md.
+- 260522 0111 Started three-strategy daily picks feature using multi-agent harness on branch codex/three-strategy-daily-picks.
+- 260522 0111 Frontend worker Confucius dispatched with sole ownership of src/templates/index.html.
+- 260522 0111 Added backend daily-picks tests; pytest unavailable in system python3, so red run is environment-blocked.
+- 260522 0121 Backend implementation added daily-picks strategy engine, SQLite persistence, runner, and FastAPI endpoints.
+- 260522 0127 Frontend worker Confucius DONE: 今日推荐 navigation/page/rendering/refresh flow added to src/templates/index.html.
+- 260522 0130 Strategy fidelity reviewer Hubble PASS after repair: market-cap, leader volume, and ETF coverage issues closed.
+- 260522 0136 Backend integration reviewer Copernicus FAIL: ETF source outages were represented as successful defensive picks.
+- 260522 0139 Repair added DataSourceUnavailable handling and regression test for ETF outage failed-run behavior.
+- 260522 0140 Local verification: AST parse, py_compile, Node inline script parse, runner help, focused ETF outage smokes, and `uv run ... pytest tests/test_daily_picks.py -q` passed.
+- 260522 0141 Full local verification passed with `uv run ... pytest -q`: 24 passed, 3 warnings.
+- 260522 0141 Backend integration re-review Copernicus PASS: ETF outage handling issue closed.
+- 260522 0143 Fresh FastAPI smoke on port 8901 returned index HTML and `/api/daily-picks` 401 under existing auth rules.

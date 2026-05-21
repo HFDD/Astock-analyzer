@@ -1,0 +1,12 @@
+.agents/
+skills-lock.json
+
+stock-analyzer/.pytest_cache/
+stock-analyzer/**/__pycache__/
+stock-analyzer/**/*.pyc
+stock-analyzer/logs/
+stock-analyzer/src/logs/
+stock-analyzer/data/stock.db
+stock-analyzer/src/data/stock.db
+stock-analyzer/*.pid
+stock-analyzer/src/*.pid

@@ -1,0 +1,2391 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>A股智能分析</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            color: #e2e8f0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            min-height: 100vh;
+        }
+        .bg-theme { background: #1a1a2e; }
+        .bg-card { background: #16213e; }
+        .bg-card-light { background: #1a2754; }
+        .bg-accent { background: #0f3460; }
+        .bg-accent-hover { background: #164a80; }
+        .border-theme { border-color: #1e3a5f; }
+        .text-accent { color: #4a9eff; }
+        .text-subtle { color: #8ba4b8; }
+        .score-green { color: #22c55e; }
+        .score-yellow { color: #eab308; }
+        .score-red { color: #ef4444; }
+        .btn-primary {
+            background: linear-gradient(135deg, #0f3460, #164a80);
+            color: white;
+            transition: all 0.2s;
+        }
+        .btn-primary:hover { background: linear-gradient(135deg, #164a80, #1d5ea0); transform: translateY(-1px); box-shadow: 0 4px 15px rgba(15,52,96,0.4); }
+        .btn-danger { background: #dc2626; color: white; }
+        .btn-danger:hover { background: #b91c1c; }
+        .btn-ghost { background: transparent; border: 1px solid #1e3a5f; color: #8ba4b8; }
+        .btn-ghost:hover { border-color: #4a9eff; color: #4a9eff; }
+        input, select {
+            background: #1a2754;
+            border: 1px solid #1e3a5f;
+            color: #e2e8f0;
+            border-radius: 8px;
+            padding: 10px 14px;
+            width: 100%;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        input:focus, select:focus { border-color: #4a9eff; box-shadow: 0 0 0 3px rgba(74,158,255,0.15); }
+        input::placeholder { color: #5a7a94; }
+        .card {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #1e3a5f;
+        }
+        .page { display: none; }
+        .page.active { display: block; }
+        .nav-link.active-nav { color: #4a9eff; border-bottom: 2px solid #4a9eff; }
+        .recommend-buy-strong { background: linear-gradient(135deg, #22c55e, #16a34a); }
+        .recommend-buy { background: linear-gradient(135deg, #4ade80, #22c55e); }
+        .recommend-hold { background: linear-gradient(135deg, #eab308, #ca8a04); }
+        .recommend-sell { background: linear-gradient(135deg, #fb923c, #f97316); }
+        .recommend-sell-strong { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        .strategy-risk-low { border-color: rgba(34,197,94,0.45); background: linear-gradient(135deg, rgba(22,33,62,0.98), rgba(20,83,45,0.36)); }
+        .strategy-risk-medium { border-color: rgba(234,179,8,0.45); background: linear-gradient(135deg, rgba(22,33,62,0.98), rgba(113,63,18,0.36)); }
+        .strategy-risk-high { border-color: rgba(239,68,68,0.55); background: linear-gradient(135deg, rgba(22,33,62,0.98), rgba(127,29,29,0.38)); }
+        .strategy-pill { border: 1px solid #1e3a5f; background: rgba(26,39,84,0.74); border-radius: 999px; padding: 2px 8px; font-size: 11px; white-space: nowrap; }
+        .strategy-card { border: 1px solid #1e3a5f; background: rgba(26,39,84,0.72); border-radius: 10px; padding: 14px; }
+        .strategy-card-high { border-color: rgba(239,68,68,0.55); }
+        .strategy-card-medium { border-color: rgba(234,179,8,0.5); }
+        .strategy-card-low { border-color: rgba(34,197,94,0.45); }
+        select:disabled { color: #5a7a94; opacity: 0.8; cursor: not-allowed; }
+        .loading-spinner {
+            width: 40px; height: 40px;
+            border: 3px solid #1e3a5f;
+            border-top: 3px solid #4a9eff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .history-item { cursor: pointer; }
+        .history-item:hover { background: #1a2754; }
+        .fade-in { animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #1a1a2e; }
+        ::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #0f3460; }
+    </style>
+</head>
+<body>
+
+<!-- ========== LOADING OVERLAY ========== -->
+<div id="globalLoading" class="fixed inset-0 z-50 flex items-center justify-center bg-theme transition-opacity duration-500" style="display:none;">
+    <div class="text-center">
+        <div class="loading-spinner"></div>
+        <p class="text-subtle mt-3 text-sm">加载中...</p>
+    </div>
+</div>
+
+<!-- ========== TOAST CONTAINER ========== -->
+<div id="toastContainer" class="fixed top-4 right-4 z-50 flex flex-col gap-2" style="max-width:360px;"></div>
+
+<!-- ========== LOGIN PAGE (#/login) ========== -->
+<div id="page-login" class="page active">
+    <div class="min-h-screen flex items-center justify-center px-4 py-12">
+        <div class="w-full max-w-sm">
+            <!-- Logo -->
+            <div class="text-center mb-10">
+                <div class="text-5xl mb-3 opacity-80">📈</div>
+                <h1 class="text-2xl font-bold tracking-tight">A股智能分析</h1>
+                <p class="text-subtle text-sm mt-1">专业级 A股技术分析平台</p>
+            </div>
+            <!-- Login Card -->
+            <div class="card fade-in">
+                <h2 class="text-lg font-semibold mb-6">登录</h2>
+                <div id="loginError" class="bg-red-900/30 border border-red-800 text-red-300 rounded-lg px-4 py-2 mb-4 text-sm" style="display:none;"></div>
+                <form id="loginForm" onsubmit="return false;">
+                    <div class="mb-4">
+                        <label class="block text-sm text-subtle mb-1.5">用户名</label>
+                        <input type="text" id="loginUsername" placeholder="请输入用户名" required autocomplete="username">
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-sm text-subtle mb-1.5">密码</label>
+                        <input type="password" id="loginPassword" placeholder="请输入密码" required autocomplete="current-password">
+                    </div>
+                    <button type="submit" onclick="handleLogin()" class="btn-primary w-full py-2.5 rounded-lg font-medium text-sm">登 录</button>
+                </form>
+                <p class="text-center text-sm text-subtle mt-5">
+                    还没有账号？
+                    <a href="#/register" class="text-accent hover:underline">立即注册</a>
+                </p>
+            </div>
+            <p class="text-center text-xs text-subtle mt-6 opacity-60">数据来源: AKShare · 仅供学习参考</p>
+        </div>
+    </div>
+</div>
+
+<!-- ========== REGISTER PAGE (#/register) ========== -->
+<div id="page-register" class="page">
+    <div class="min-h-screen flex items-center justify-center px-4 py-12">
+        <div class="w-full max-w-sm">
+            <div class="text-center mb-10">
+                <div class="text-5xl mb-3 opacity-80">📈</div>
+                <h1 class="text-2xl font-bold tracking-tight">A股智能分析</h1>
+                <p class="text-subtle text-sm mt-1">注册新账号</p>
+            </div>
+            <div class="card fade-in">
+                <h2 class="text-lg font-semibold mb-6">注册</h2>
+                <div id="registerError" class="bg-red-900/30 border border-red-800 text-red-300 rounded-lg px-4 py-2 mb-4 text-sm" style="display:none;"></div>
+                <form id="registerForm" onsubmit="return false;">
+                    <div class="mb-4">
+                        <label class="block text-sm text-subtle mb-1.5">用户名</label>
+                        <input type="text" id="regUsername" placeholder="请输入用户名" required autocomplete="off">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm text-subtle mb-1.5">邮箱</label>
+                        <input type="email" id="regEmail" placeholder="请输入邮箱地址" required autocomplete="email">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm text-subtle mb-1.5">密码</label>
+                        <input type="password" id="regPassword" placeholder="至少6位密码" required minlength="6" autocomplete="new-password">
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-sm text-subtle mb-1.5">确认密码</label>
+                        <input type="password" id="regConfirm" placeholder="再次输入密码" required autocomplete="new-password">
+                    </div>
+                    <button type="submit" onclick="handleRegister()" class="btn-primary w-full py-2.5 rounded-lg font-medium text-sm">注 册</button>
+                </form>
+                <p class="text-center text-sm text-subtle mt-5">
+                    已有账号？
+                    <a href="#/login" class="text-accent hover:underline">返回登录</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== MAIN APP (logged in) ========== -->
+<div id="appMain" style="display:none;">
+    <!-- Top Navigation -->
+    <nav class="bg-card border-b border-theme sticky top-0 z-40">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="flex items-center justify-between h-14">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">📈</span>
+                    <span class="font-bold text-base hidden sm:inline">A股智能分析</span>
+                </div>
+                <!-- Desktop Nav -->
+                <div class="hidden sm:flex items-center gap-1">
+                    <a href="#/analyze" class="nav-link px-3 py-1.5 text-sm rounded-lg nav-anal" onclick="switchPage(event,'analyze')">分析</a>
+                    <a href="#/daily-picks" class="nav-link px-3 py-1.5 text-sm rounded-lg nav-daily" onclick="switchPage(event,'daily-picks')">今日推荐</a>
+                    <a href="#/watchlist" class="nav-link px-3 py-1.5 text-sm rounded-lg nav-watch" onclick="switchPage(event,'watchlist')">自选股</a>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="text-xs text-subtle hidden sm:inline" id="navUserInfo">加载中...</span>
+                    <span class="text-xs bg-accent text-white px-2 py-0.5 rounded-full hidden sm:inline" id="navCreditsBadge">0</span>
+                    <button onclick="handleLogout()" class="btn-ghost text-xs px-3 py-1.5 rounded-lg">退出</button>
+                </div>
+            </div>
+            <!-- Mobile Bottom Nav -->
+            <div class="sm:hidden flex justify-around py-1.5 border-t border-theme -mx-4 px-4">
+                <a href="#/analyze" class="nav-link text-xs px-3 py-1.5 rounded-lg nav-anal" onclick="switchPage(event,'analyze')">🔍 分析</a>
+                <a href="#/daily-picks" class="nav-link text-xs px-2 py-1.5 rounded-lg nav-daily" onclick="switchPage(event,'daily-picks')">📌 今日推荐</a>
+                <a href="#/watchlist" class="nav-link text-xs px-3 py-1.5 rounded-lg nav-watch" onclick="switchPage(event,'watchlist')">⭐ 自选股</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ====== ANALYZE PAGE (#/analyze) ====== -->
+    <div id="page-analyze" class="page">
+        <div class="max-w-6xl mx-auto px-4 py-6">
+            <!-- Search Bar -->
+            <div class="card mb-6 fade-in">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_270px_180px_auto] gap-3 items-end">
+                    <div>
+                        <label class="block text-xs text-subtle mb-1.5">股票代码</label>
+                        <div class="relative">
+                            <input type="text" id="stockCodeInput" placeholder="输入代码，如: 000001, 600519" class="pr-20" maxlength="6" inputmode="numeric" autocomplete="off" oninput="handleStockCodeInput()" onkeydown="if(event.key==='Enter')analyzeStock()">
+                            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-subtle pointer-events-none">A股</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-subtle mb-1.5">买入交易日</label>
+                        <div class="grid grid-cols-[1fr_0.8fr_0.8fr] gap-2">
+                            <select id="buyYearSelect" disabled onchange="updateBuyMonthOptions()">
+                                <option value="">年</option>
+                            </select>
+                            <select id="buyMonthSelect" disabled onchange="updateBuyDayOptions()">
+                                <option value="">月</option>
+                            </select>
+                            <select id="buyDaySelect" disabled>
+                                <option value="">日</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-subtle mb-1.5">买入价格/持仓成本价 <span class="text-subtle opacity-70">可选</span></label>
+                        <input type="number" id="costPriceInput" placeholder="如: 12.35" min="0" step="0.001" onkeydown="if(event.key==='Enter')analyzeStock()">
+                    </div>
+                    <button onclick="analyzeStock()" id="analyzeBtn" class="btn-primary px-8 py-2.5 rounded-lg font-medium whitespace-nowrap text-sm">
+                        🔍 开始分析
+                    </button>
+                </div>
+                <div id="analyzeHint" class="text-xs text-subtle mt-3 flex items-center gap-4">
+                    <span>💡 输入6位股票代码</span>
+                    <span>📅 选择买入交易日可生成交易资格与卖点预案</span>
+                    <span>🎯 填成本价可启用量化持仓卖点</span>
+                    <span>⚡ 每次分析消耗 1 credits</span>
+                </div>
+            </div>
+
+            <!-- Analysis Results -->
+            <div id="analysisResult" style="display:none;">
+                <!-- Stock Basic Info + Score -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                    <!-- Stock Info Card -->
+                    <div class="card fade-in">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <h2 class="text-xl font-bold" id="stockName">--</h2>
+                                <p class="text-subtle text-sm" id="stockCode">--</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-xs text-subtle">行业</p>
+                                <p class="text-sm font-medium" id="stockIndustry">--</p>
+                            </div>
+                        </div>
+                        <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
+                            <div><span class="text-subtle">市值</span><br><span id="stockMarketCap" class="font-medium">--</span></div>
+                            <div><span class="text-subtle">市盈率</span><br><span id="stockPE" class="font-medium">--</span></div>
+                            <div><span class="text-subtle">流通市值</span><br><span id="stockFloatCap" class="font-medium">--</span></div>
+                            <div><span class="text-subtle">当前价</span><br><span id="stockPrice" class="font-medium">--</span></div>
+                        </div>
+                    </div>
+                    <!-- Score Dashboard -->
+                    <div class="card fade-in flex flex-col items-center justify-center text-center">
+                        <p class="text-subtle text-xs mb-2">综合评分</p>
+                        <div id="scoreCircle" class="w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold mb-2" style="background:conic-gradient(#22c55e 0deg, #1a2754 0deg);">
+                            <span id="scoreValue" class="bg-card rounded-full w-20 h-20 flex items-center justify-center">--</span>
+                        </div>
+                        <p id="scoreLabel" class="text-sm text-subtle">--</p>
+                    </div>
+                    <!-- Recommendation -->
+                    <div class="card fade-in flex flex-col items-center justify-center text-center sm:col-span-1 lg:col-span-1">
+                        <p class="text-subtle text-xs mb-3">综合建议</p>
+                        <div id="recommendBadge" class="recommend-hold rounded-xl px-6 py-3 w-full max-w-[200px]">
+                            <p id="recommendText" class="text-lg font-bold text-white">--</p>
+                        </div>
+                        <div class="mt-3 flex gap-3 text-xs text-subtle">
+                            <span id="creditsDisplay">💎 剩余 0 credits</span>
+                            <span id="analysisTime">🕐 --</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analysis Text Summary -->
+                <div class="card mb-6 fade-in">
+                    <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">📝 分析摘要</h3>
+                    <div id="analysisText" class="text-sm leading-relaxed text-subtle whitespace-pre-wrap"></div>
+                </div>
+
+                <!-- Indicator Values -->
+                <div class="card mb-6 fade-in">
+                    <h3 class="text-sm font-semibold mb-3">📋 技术指标明细</h3>
+                    <div id="indicatorValues" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-sm"></div>
+                </div>
+
+                <!-- ↑ 指标明细 ↑ -->
+
+                <!-- ====== 增强分析卡片 ====== -->
+
+                <!-- 趋势分析卡 -->
+                <div id="trendCard" class="card mb-6 fade-in" style="display:none;">
+                    <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">📈 趋势分析</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="bg-card-light rounded-lg p-3 text-center">
+                            <p class="text-xs text-subtle mb-1">短期趋势（5日）</p>
+                            <p id="trendShort" class="text-sm font-medium">--</p>
+                        </div>
+                        <div class="bg-card-light rounded-lg p-3 text-center">
+                            <p class="text-xs text-subtle mb-1">中期趋势（20日）</p>
+                            <p id="trendMid" class="text-sm font-medium">--</p>
+                        </div>
+                        <div class="bg-card-light rounded-lg p-3 text-center">
+                            <p class="text-xs text-subtle mb-1">长期趋势（60日）</p>
+                            <p id="trendLong" class="text-sm font-medium">--</p>
+                        </div>
+                    </div>
+                    <div class="mt-3 bg-accent/30 rounded-lg p-3 text-sm">
+                        <span class="text-subtle">趋势研判：</span><span id="trendSummary" class="font-medium">--</span>
+                    </div>
+                </div>
+
+                <!-- 关键价位卡 -->
+                <div id="keyLevelsCard" class="card mb-6 fade-in" style="display:none;">
+                    <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">🎯 关键价位</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="bg-card-light rounded-lg p-3">
+                            <p class="text-xs text-subtle mb-2">🟢 支撑位</p>
+                            <div id="supportLevels" class="text-sm">暂无数据</div>
+                        </div>
+                        <div class="bg-card-light rounded-lg p-3">
+                            <p class="text-xs text-subtle mb-2">🔴 压力位</p>
+                            <div id="resistanceLevels" class="text-sm">暂无数据</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 买卖信号卡 -->
+                <div id="signalsCard" class="card mb-6 fade-in" style="display:none;">
+                    <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">🚦 买卖信号</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-xs text-green-400 mb-2">✅ 买入信号</p>
+                            <div id="buySignals" class="text-sm space-y-1">
+                                <p class="text-subtle">无</p>
+                            </div>
+                        </div>
+                        <div>
+                            <p class="text-xs text-red-400 mb-2">❌ 卖出信号</p>
+                            <div id="sellSignals" class="text-sm space-y-1">
+                                <p class="text-subtle">无</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3 text-sm">
+                        <span class="text-subtle">信号强度：</span><span id="signalStrength" class="font-medium">--</span>
+                    </div>
+                </div>
+
+                <!-- 策略卖点提示卡 -->
+                <div id="strategyExitCard" class="card mb-6 fade-in" style="display:none;">
+                    <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-4">
+                        <div>
+                            <h3 class="text-sm font-semibold mb-2 flex items-center gap-2">🎯 策略卖点提示</h3>
+                            <p id="strategyExitSummary" class="text-sm text-subtle leading-relaxed">--</p>
+                        </div>
+                        <div class="flex flex-row lg:flex-col gap-2 lg:items-end">
+                            <div id="strategyRiskBadge" class="strategy-pill font-medium">--</div>
+                            <div id="strategyAdjustBadge" class="strategy-pill text-subtle">--</div>
+                        </div>
+                    </div>
+                    <div id="strategyCards" class="grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
+                    <div id="strategyPositionLine" class="mt-3 text-xs text-subtle"></div>
+                </div>
+
+                <!-- 操作建议卡 -->
+                <div id="actionCard" class="card mb-6 fade-in" style="display:none;">
+                    <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">💡 技术面操作建议</h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                        <div class="bg-card-light rounded-lg p-3 text-center">
+                            <p class="text-xs text-subtle mb-1">建议操作</p>
+                            <p id="actOperation" class="text-sm font-bold text-green-400">--</p>
+                        </div>
+                        <div class="bg-card-light rounded-lg p-3 text-center">
+                            <p class="text-xs text-subtle mb-1">建议仓位</p>
+                            <p id="actPosition" class="text-sm font-medium">--</p>
+                        </div>
+                        <div class="bg-card-light rounded-lg p-3 text-center">
+                            <p class="text-xs text-subtle mb-1">止损价</p>
+                            <p id="actStopLoss" class="text-sm font-mono text-yellow-400">--</p>
+                        </div>
+                        <div class="bg-card-light rounded-lg p-3 text-center">
+                            <p class="text-xs text-subtle mb-1">止盈价</p>
+                            <p id="actTakeProfit" class="text-sm font-mono text-green-400">--</p>
+                        </div>
+                        <div class="bg-card-light rounded-lg p-3 text-center">
+                            <p class="text-xs text-subtle mb-1">持有周期</p>
+                            <p id="actPeriod" class="text-sm font-medium">--</p>
+                        </div>
+                        <div class="bg-card-light rounded-lg p-3 text-center">
+                            <p class="text-xs text-subtle mb-1">风险等级</p>
+                            <p id="actRiskLevel" class="text-sm font-medium">--</p>
+                        </div>
+                    </div>
+                    <div id="actionBasisBlock" class="mt-3 bg-card-light rounded-lg p-3 text-xs leading-relaxed text-subtle" style="display:none;">
+                        <p><span class="text-subtle">技术原始建议：</span><span id="actTechnicalAction" class="font-medium text-accent">--</span></p>
+                        <p id="actBasisReason" class="mt-2 whitespace-pre-wrap"></p>
+                    </div>
+                </div>
+
+                <!-- 流量分析卡 -->
+                <div id="flowCard" class="card mb-6 fade-in" style="display:none;">
+                    <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">🌊 流量分析</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                        <!-- 流量分数仪表盘 -->
+                        <div class="bg-card-light rounded-lg p-4 flex flex-col items-center justify-center">
+                            <p class="text-xs text-subtle mb-2">流量总分</p>
+                            <div id="flowScoreCircle" class="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold" style="background:conic-gradient(#4a9eff 0deg, #1a2754 0deg);">
+                                <span id="flowScoreValue" class="bg-card-light rounded-full w-16 h-16 flex items-center justify-center">--</span>
+                            </div>
+                            <p id="flowRecommendation" class="text-xs mt-2 font-medium">--</p>
+                        </div>
+                        <!-- 流量阶段 -->
+                        <div class="bg-card-light rounded-lg p-4 flex flex-col items-center justify-center">
+                            <p class="text-xs text-subtle mb-2">流量阶段</p>
+                            <div id="flowPhaseBadge" class="text-lg font-bold px-4 py-2 rounded-xl">--</div>
+                            <p id="flowPhaseDesc" class="text-xs text-subtle mt-2 text-center">--</p>
+                        </div>
+                        <!-- 量能爆发度 -->
+                        <div class="bg-card-light rounded-lg p-4">
+                            <p class="text-xs text-subtle mb-2">量能爆发度</p>
+                            <div class="flex items-end gap-2 mb-1">
+                                <span id="flowVolumeBurst" class="text-2xl font-bold font-mono">--</span>
+                                <span class="text-xs text-subtle mb-1">倍</span>
+                            </div>
+                            <div class="w-full bg-gray-700 rounded-full h-2 mb-1">
+                                <div id="flowVolumeBar" class="h-2 rounded-full transition-all duration-500" style="width:0%;background:linear-gradient(90deg,#22c55e,#eab308,#ef4444);"></div>
+                            </div>
+                            <p id="flowVolumeDesc" class="text-xs text-subtle">--</p>
+                        </div>
+                        <!-- 龙头潜力 -->
+                        <div class="bg-card-light rounded-lg p-4">
+                            <p class="text-xs text-subtle mb-2">龙头潜力</p>
+                            <div class="flex items-end gap-2 mb-1">
+                                <span id="flowLeadershipScore" class="text-2xl font-bold font-mono">--</span>
+                                <span class="text-xs text-subtle mb-1">分</span>
+                            </div>
+                            <p id="flowLeadershipLevel" class="text-sm font-medium mb-1">--</p>
+                            <p id="flowLeadershipDesc" class="text-xs text-subtle">--</p>
+                        </div>
+                    </div>
+                    <!-- 详细指标 -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                        <div class="bg-accent/30 rounded-lg p-2.5 text-center">
+                            <p class="text-xs text-subtle">价格动量</p>
+                            <p id="flowPriceMomentum" class="text-sm font-mono font-medium">--</p>
+                        </div>
+                        <div class="bg-accent/30 rounded-lg p-2.5 text-center">
+                            <p class="text-xs text-subtle">波动率</p>
+                            <p id="flowVolatility" class="text-sm font-mono font-medium">--</p>
+                        </div>
+                        <div class="bg-accent/30 rounded-lg p-2.5 text-center">
+                            <p class="text-xs text-subtle">连续上涨</p>
+                            <p id="flowUpDays" class="text-sm font-mono font-medium">--</p>
+                        </div>
+                        <div class="bg-accent/30 rounded-lg p-2.5 text-center">
+                            <p class="text-xs text-subtle">名字辨识度</p>
+                            <p id="flowNameRecognition" class="text-sm font-medium">--</p>
+                        </div>
+                    </div>
+                    <!-- 操作提示 -->
+                    <div class="bg-card-light rounded-lg p-3 space-y-2">
+                        <div class="flex items-start gap-2">
+                            <span>⏰</span>
+                            <p class="text-xs"><span class="text-subtle">时机：</span><span id="flowTimingAdvice" class="font-medium">--</span></p>
+                        </div>
+                        <div class="flex items-start gap-2">
+                            <span>🚪</span>
+                            <p class="text-xs"><span class="text-subtle">退出：</span><span id="flowExitSignal" class="font-medium">--</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 详细分析报告 -->
+                <div class="card mb-6 fade-in" id="detailedReportCard" style="display:none;">
+                    <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">📄 综合分析报告</h3>
+                    <div id="detailedReportText" class="text-xs leading-relaxed whitespace-pre-wrap font-mono" style="color:#c8d6e5;background:#0d1117;border-radius:8px;padding:16px;overflow-x:auto;font-size:11px;line-height:1.7;"></div>
+                </div>
+
+                <!-- History -->
+                <div class="card fade-in">
+                    <h3 class="text-sm font-semibold mb-4 flex items-center gap-2">📋 最近分析记录</h3>
+                    <div id="historyList" class="divide-y divide-theme/50 text-sm"></div>
+                </div>
+
+                <!-- K-line Chart -->
+                <div class="card mt-6 mb-6 fade-in">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-sm font-semibold">📊 K线图 <span class="text-subtle text-xs font-normal">(MA5/10/20/60)</span></h3>
+                        <div class="flex gap-1" id="klinePeriods">
+                            <button onclick="changeKlinePeriod(60)" class="text-xs px-2 py-1 rounded bg-card-light text-subtle">60日</button>
+                            <button onclick="changeKlinePeriod(120)" class="text-xs px-2 py-1 rounded bg-accent text-white">120日</button>
+                            <button onclick="changeKlinePeriod(250)" class="text-xs px-2 py-1 rounded bg-card-light text-subtle">250日</button>
+                        </div>
+                    </div>
+                    <div id="klineChart" style="width:100%;height:480px;"></div>
+                </div>
+
+                <!-- Technical Indicators Grid -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <div class="card fade-in">
+                        <h3 class="text-sm font-semibold mb-3">📉 MACD</h3>
+                        <div id="macdChart" style="width:100%;height:240px;"></div>
+                    </div>
+                    <div class="card fade-in">
+                        <h3 class="text-sm font-semibold mb-3">📉 KDJ</h3>
+                        <div id="kdjChart" style="width:100%;height:240px;"></div>
+                    </div>
+                    <div class="card fade-in">
+                        <h3 class="text-sm font-semibold mb-3">📉 RSI</h3>
+                        <div id="rsiChart" style="width:100%;height:240px;"></div>
+                    </div>
+                    <div class="card fade-in">
+                        <h3 class="text-sm font-semibold mb-3">📉 布林带 (BOLL)</h3>
+                        <div id="bollChart" style="width:100%;height:240px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div id="analyzeEmpty" class="text-center py-20">
+                <div class="text-5xl mb-4 opacity-40">🔍</div>
+                <p class="text-subtle text-sm">输入股票代码开始分析</p>
+                <p class="text-xs text-subtle mt-2 opacity-60">支持沪市、深市、创业板、科创板全部A股</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====== WATCHLIST PAGE (#/watchlist) ====== -->
+    <div id="page-watchlist" class="page">
+        <div class="max-w-4xl mx-auto px-4 py-6">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-lg font-semibold">⭐ 自选股</h2>
+                <button onclick="showAddWatchlistModal()" class="btn-primary text-xs px-4 py-2 rounded-lg">+ 添加</button>
+            </div>
+            <div id="watchlistContent" class="space-y-3"></div>
+            <div id="watchlistEmpty" class="text-center py-20" style="display:none;">
+                <div class="text-5xl mb-4 opacity-40">⭐</div>
+                <p class="text-subtle text-sm">还没有自选股</p>
+                <p class="text-xs text-subtle mt-2 opacity-60">点击右上角"添加"将股票加入自选</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====== DAILY PICKS PAGE (#/daily-picks) ====== -->
+    <div id="page-daily-picks" class="page">
+        <div class="max-w-6xl mx-auto px-4 py-6">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+                <div>
+                    <h2 class="text-lg font-semibold">今日推荐</h2>
+                    <p id="dailyPicksDateLine" class="text-xs text-subtle mt-1">--</p>
+                </div>
+                <button id="dailyPicksRunAllBtn" onclick="runDailyPicks('all')" class="btn-primary text-xs px-4 py-2 rounded-lg whitespace-nowrap">刷新全部</button>
+            </div>
+            <div id="dailyPicksContent" class="space-y-4"></div>
+            <div id="dailyPicksEmpty" class="text-center py-20" style="display:none;">
+                <div class="text-5xl mb-4 opacity-40">📌</div>
+                <p class="text-subtle text-sm">暂无今日推荐</p>
+                <p class="text-xs text-subtle mt-2 opacity-60">部分策略会在交易时段后生成</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== MODAL: Add Watchlist ========== -->
+<div id="addWatchlistModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60" style="display:none;">
+    <div class="bg-card rounded-xl p-6 w-full max-w-sm mx-4 border border-theme">
+        <h3 class="text-base font-semibold mb-4">添加自选股</h3>
+        <div id="wlModalError" class="bg-red-900/30 border border-red-800 text-red-300 rounded-lg px-4 py-2 mb-4 text-sm" style="display:none;"></div>
+        <div class="mb-4">
+            <label class="block text-xs text-subtle mb-1.5">股票代码</label>
+            <input type="text" id="wlCode" placeholder="如: 000001" class="mb-3">
+            <label class="block text-xs text-subtle mb-1.5">股票名称（可选）</label>
+            <input type="text" id="wlName" placeholder="如: 平安银行">
+        </div>
+        <div class="flex gap-3">
+            <button onclick="hideModal('addWatchlistModal')" class="btn-ghost flex-1 py-2 rounded-lg text-sm">取消</button>
+            <button onclick="addToWatchlist()" class="btn-primary flex-1 py-2 rounded-lg text-sm">确认添加</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ===================== CONFIG =====================
+const API_BASE = window.location.origin;
+const COLORS = {
+    up: '#ef4444',   // red: price up (Chinese convention)
+    down: '#22c55e', // green: price down
+    ma5: '#f59e0b',
+    ma10: '#4a9eff',
+    ma20: '#a855f7',
+    ma60: '#ec4899',
+    volUp: 'rgba(239,68,68,0.5)',
+    volDown: 'rgba(34,197,94,0.5)',
+    gridLine: '#1e3a5f'
+};
+
+// ===================== STATE =====================
+let state = {
+    token: localStorage.getItem('token') || null,
+    user: null,
+    currentPage: 'analyze',
+    stockData: null,       // full analysis result
+    klinePeriod: 120,      // default days
+    tradeDatesCode: null,
+    tradeDatesRequestId: 0,
+    tradeDates: [],
+    tradeDateSet: new Set(),
+    latestTradeDate: '',
+    charts: {
+        kline: null,
+        macd: null,
+        kdj: null,
+        rsi: null,
+        boll: null
+    }
+};
+
+// ===================== API HELPER =====================
+async function apiCall(method, url, body = null) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (state.token) headers['Authorization'] = `Bearer ${state.token}`;
+    const opts = { method, headers };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(url, opts);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `请求失败 (${res.status})`);
+    return data;
+}
+
+// ===================== TOAST =====================
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    const colors = { info: 'bg-accent', success: 'bg-green-700', error: 'bg-red-700', warning: 'bg-yellow-700' };
+    const icons = { info: 'ℹ️', success: '✅', error: '❌', warning: '⚠️' };
+    const el = document.createElement('div');
+    el.className = `${colors[type] || colors.info} text-white text-sm px-4 py-3 rounded-xl shadow-lg fade-in flex items-center gap-2`;
+    el.innerHTML = `<span>${icons[type] || 'ℹ️'}</span><span>${message}</span>`;
+    container.appendChild(el);
+    setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; setTimeout(() => el.remove(), 300); }, 3000);
+}
+
+// ===================== LOADING =====================
+function showGlobalLoading() { document.getElementById('globalLoading').style.display = 'flex'; }
+function hideGlobalLoading() { document.getElementById('globalLoading').style.display = 'none'; }
+
+// ===================== PAGE ROUTER =====================
+function switchPage(e, page) {
+    if (e) e.preventDefault();
+    // Update hash
+    const hash = { analyze: '#/analyze', 'daily-picks': '#/daily-picks', watchlist: '#/watchlist', login: '#/login', register: '#/register' }[page];
+    if (hash && window.location.hash !== hash) window.location.hash = hash;
+    navigateToPage(page);
+}
+
+function navigateToPage(page) {
+    if (!state.token && !['login','register'].includes(page)) { page = 'login'; window.location.hash = '#/login'; }
+
+    // Hide all pages
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+
+    if (!state.token) {
+        document.getElementById('appMain').style.display = 'none';
+        document.getElementById('page-login').style.display = page === 'login' ? 'block' : 'none';
+        document.getElementById('page-register').style.display = page === 'register' ? 'block' : 'none';
+        if (page === 'login' || page === 'register') {
+            document.getElementById(`page-${page}`).classList.add('active');
+        }
+    } else {
+        document.getElementById('appMain').style.display = 'block';
+        document.getElementById('page-login').style.display = 'none';
+        document.getElementById('page-register').style.display = 'none';
+        document.getElementById('page-analyze').style.display = page === 'analyze' ? 'block' : 'none';
+        document.getElementById('page-daily-picks').style.display = page === 'daily-picks' ? 'block' : 'none';
+        document.getElementById('page-watchlist').style.display = page === 'watchlist' ? 'block' : 'none';
+        if (page === 'analyze' || page === 'daily-picks' || page === 'watchlist') {
+            document.getElementById(`page-${page}`).classList.add('active');
+        }
+        // Update nav active
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active-nav'));
+        const navKey = page === 'analyze' ? 'anal' : (page === 'daily-picks' ? 'daily' : 'watch');
+        document.querySelectorAll('.nav-' + navKey).forEach(l => l.classList.add('active-nav'));
+
+        // Load page data
+        if (page === 'daily-picks') loadDailyPicks();
+        if (page === 'watchlist') loadWatchlist();
+        if (page === 'analyze') {
+            loadHistory();
+            // Resize charts
+            Object.values(state.charts).forEach(c => { if (c) setTimeout(() => c.resize(), 100); });
+        }
+    }
+}
+
+// ===================== AUTH =====================
+async function handleRegister() {
+    const username = document.getElementById('regUsername').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    const password = document.getElementById('regPassword').value;
+    const confirm = document.getElementById('regConfirm').value;
+    const errEl = document.getElementById('registerError');
+    errEl.style.display = 'none';
+
+    if (!username || !email || !password) { showError(errEl, '请填写所有字段'); return; }
+    if (password.length < 6) { showError(errEl, '密码至少6位'); return; }
+    if (password !== confirm) { showError(errEl, '两次密码不一致'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showError(errEl, '邮箱格式不正确'); return; }
+
+    try {
+        showGlobalLoading();
+        await apiCall('POST', `${API_BASE}/api/auth/register`, { username, email, password });
+        hideGlobalLoading();
+        showToast('注册成功，请登录', 'success');
+        window.location.hash = '#/login';
+    } catch (e) {
+        hideGlobalLoading();
+        showError(errEl, e.message);
+    }
+}
+
+async function handleLogin() {
+    const username = document.getElementById('loginUsername').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const errEl = document.getElementById('loginError');
+    errEl.style.display = 'none';
+
+    if (!username || !password) { showError(errEl, '请输入用户名和密码'); return; }
+
+    try {
+        showGlobalLoading();
+        const res = await apiCall('POST', `${API_BASE}/api/auth/login`, { username, password });
+        state.token = res.data.access_token;
+        localStorage.setItem('token', state.token);
+        hideGlobalLoading();
+        showToast('登录成功', 'success');
+        await fetchUserInfo();
+        window.location.hash = '#/analyze';
+    } catch (e) {
+        hideGlobalLoading();
+        showError(errEl, e.message);
+    }
+}
+
+async function fetchUserInfo() {
+    try {
+        const res = await apiCall('GET', `${API_BASE}/api/auth/me`);
+        state.user = res.data;
+        document.getElementById('navUserInfo').textContent = `${res.data.username}`;
+        document.getElementById('navCreditsBadge').textContent = res.data.credits || 0;
+        document.getElementById('creditsDisplay').textContent = `💎 剩余 ${res.data.credits || 0} credits`;
+        return res.data;
+    } catch (e) {
+        if (e.message.includes('401') || e.message.includes('not valid') || e.message.includes('token')) {
+            handleLogout();
+        }
+        return null;
+    }
+}
+
+function handleLogout() {
+    state.token = null;
+    state.user = null;
+    state.stockData = null;
+    localStorage.removeItem('token');
+    // Dispose charts
+    Object.keys(state.charts).forEach(k => { if (state.charts[k]) { state.charts[k].dispose(); state.charts[k] = null; } });
+    document.getElementById('analysisResult').style.display = 'none';
+    document.getElementById('analyzeEmpty').style.display = 'block';
+    window.location.hash = '#/login';
+    showToast('已退出', 'info');
+}
+
+function showError(el, msg) {
+    el.textContent = msg;
+    el.style.display = 'block';
+}
+
+function resetBuyDateControls(message = '先输入6位股票代码') {
+    const yearSelect = document.getElementById('buyYearSelect');
+    const monthSelect = document.getElementById('buyMonthSelect');
+    const daySelect = document.getElementById('buyDaySelect');
+    if (!yearSelect || !monthSelect || !daySelect) return;
+
+    yearSelect.innerHTML = `<option value="">${escapeHtml(message)}</option>`;
+    monthSelect.innerHTML = '<option value="">月</option>';
+    daySelect.innerHTML = '<option value="">日</option>';
+    yearSelect.disabled = true;
+    monthSelect.disabled = true;
+    daySelect.disabled = true;
+    state.tradeDatesCode = null;
+    state.tradeDates = [];
+    state.tradeDateSet = new Set();
+    state.latestTradeDate = '';
+}
+
+function normalizeTradeDates(payload) {
+    let items = payload;
+    if (items && !Array.isArray(items)) {
+        items = items.trade_dates || items.tradeDates || items.dates || items.items || items.data || [];
+    }
+    if (!Array.isArray(items)) return [];
+
+    const seen = new Set();
+    return items.map(item => {
+        if (typeof item === 'string') return { value: item, label: item };
+        if (!item || typeof item !== 'object') return null;
+        const value = item.trade_date || item.date || item.buy_date || item.value || '';
+        if (!value) return null;
+        return { value: String(value), label: String(item.label || item.display || item.name || value) };
+    }).filter(item => {
+        if (!item || seen.has(item.value)) return false;
+        seen.add(item.value);
+        return true;
+    });
+}
+
+async function loadBuyTradeDates(code) {
+    const yearSelect = document.getElementById('buyYearSelect');
+    const monthSelect = document.getElementById('buyMonthSelect');
+    const daySelect = document.getElementById('buyDaySelect');
+    if (!yearSelect || !monthSelect || !daySelect) return;
+
+    const requestId = ++state.tradeDatesRequestId;
+    state.tradeDatesCode = code;
+    state.tradeDates = [];
+    state.tradeDateSet = new Set();
+    state.latestTradeDate = '';
+    yearSelect.disabled = true;
+    monthSelect.disabled = true;
+    daySelect.disabled = true;
+    yearSelect.innerHTML = '<option value="">加载中</option>';
+    monthSelect.innerHTML = '<option value="">月</option>';
+    daySelect.innerHTML = '<option value="">日</option>';
+
+    try {
+        const res = await apiCall('GET', `${API_BASE}/api/stock/${code}/trade-dates`);
+        if (requestId !== state.tradeDatesRequestId || code !== state.tradeDatesCode) return;
+
+        const dates = normalizeTradeDates(res.data !== undefined ? res.data : res);
+        if (!dates.length) {
+            resetBuyDateControls('未获取到交易日');
+            return;
+        }
+
+        populateBuyDateControls(dates);
+    } catch (e) {
+        if (requestId !== state.tradeDatesRequestId) return;
+        resetBuyDateControls('交易日加载失败');
+        showToast(`买入交易日加载失败：${e.message}`, 'warning');
+    }
+}
+
+function populateBuyDateControls(dates) {
+    const yearSelect = document.getElementById('buyYearSelect');
+    const monthSelect = document.getElementById('buyMonthSelect');
+    const daySelect = document.getElementById('buyDaySelect');
+    if (!yearSelect || !monthSelect || !daySelect) return;
+
+    const validDates = dates
+        .map(item => (typeof item === 'string' ? item : item.value))
+        .filter(value => /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')))
+        .sort();
+
+    state.tradeDates = validDates;
+    state.tradeDateSet = new Set(validDates);
+    state.latestTradeDate = validDates[validDates.length - 1] || '';
+
+    if (!validDates.length) {
+        resetBuyDateControls('未获取到交易日');
+        return;
+    }
+
+    const years = [...new Set(validDates.map(date => date.slice(0, 4)))].sort((a, b) => b.localeCompare(a));
+    yearSelect.innerHTML = '<option value="">年</option>' + years.map(year =>
+        `<option value="${escapeHtml(year)}">${escapeHtml(year)}</option>`
+    ).join('');
+    yearSelect.disabled = false;
+    updateBuyMonthOptions();
+}
+
+function updateBuyMonthOptions() {
+    const yearSelect = document.getElementById('buyYearSelect');
+    const monthSelect = document.getElementById('buyMonthSelect');
+    const daySelect = document.getElementById('buyDaySelect');
+    if (!yearSelect || !monthSelect || !daySelect) return;
+
+    const selectedYear = yearSelect.value;
+    const months = selectedYear
+        ? [...new Set(state.tradeDates
+            .filter(date => date.startsWith(`${selectedYear}-`))
+            .map(date => date.slice(5, 7)))]
+        : [];
+
+    monthSelect.innerHTML = '<option value="">月</option>' + months.map(month =>
+        `<option value="${escapeHtml(month)}">${escapeHtml(Number(month))}月</option>`
+    ).join('');
+    monthSelect.disabled = !months.length;
+    daySelect.innerHTML = '<option value="">日</option>';
+    daySelect.disabled = true;
+}
+
+function updateBuyDayOptions() {
+    const yearSelect = document.getElementById('buyYearSelect');
+    const monthSelect = document.getElementById('buyMonthSelect');
+    const daySelect = document.getElementById('buyDaySelect');
+    if (!yearSelect || !monthSelect || !daySelect) return;
+
+    const selectedYear = yearSelect.value;
+    const selectedMonth = monthSelect.value;
+    const days = selectedYear && selectedMonth
+        ? state.tradeDates
+            .filter(date => date.startsWith(`${selectedYear}-${selectedMonth}-`))
+            .map(date => date.slice(8, 10))
+        : [];
+
+    daySelect.innerHTML = '<option value="">日</option>' + days.map(day =>
+        `<option value="${escapeHtml(day)}">${escapeHtml(Number(day))}日</option>`
+    ).join('');
+    daySelect.disabled = !days.length;
+}
+
+function getSelectedBuyDate() {
+    const year = document.getElementById('buyYearSelect')?.value || '';
+    const month = document.getElementById('buyMonthSelect')?.value || '';
+    const day = document.getElementById('buyDaySelect')?.value || '';
+    if (!year || !month || !day) return '';
+    const date = `${year}-${month}-${day}`;
+    return state.tradeDateSet && state.tradeDateSet.has(date) ? date : '';
+}
+
+function handleStockCodeInput() {
+    const input = document.getElementById('stockCodeInput');
+    if (!input) return;
+    const normalized = input.value.replace(/\D/g, '').slice(0, 6);
+    if (input.value !== normalized) input.value = normalized;
+
+    const code = input.value.trim();
+    if (/^\d{6}$/.test(code)) {
+        if (state.tradeDatesCode !== code) loadBuyTradeDates(code);
+        return;
+    }
+    state.tradeDatesRequestId++;
+    resetBuyDateControls();
+}
+
+// ===================== STOCK ANALYSIS =====================
+async function analyzeStock(code) {
+    const input = document.getElementById('stockCodeInput');
+    const costInput = document.getElementById('costPriceInput');
+    const providedCode = Boolean(code);
+    code = (code || input.value || '').trim();
+    if (!code) { showToast('请输入股票代码', 'warning'); return; }
+    if (!/^\d{6}$/.test(code)) { showToast('请输入6位股票代码', 'warning'); return; }
+    if (providedCode && input && input.value.trim() !== code) {
+        input.value = code;
+        handleStockCodeInput();
+    }
+    const costRaw = (costInput && costInput.value ? costInput.value : '').trim();
+    let costPrice = null;
+    if (costRaw) {
+        costPrice = parseFloat(costRaw);
+        if (!Number.isFinite(costPrice) || costPrice <= 0) {
+            showToast('持仓成本价需为大于0的数字', 'warning');
+            return;
+        }
+    }
+    const buyDate = getSelectedBuyDate();
+
+    const btn = document.getElementById('analyzeBtn');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="loading-spinner" style="width:16px;height:16px;border-width:2px;margin:0;display:inline-block;vertical-align:middle;"></span> 分析中...';
+    btn.disabled = true;
+    document.getElementById('analyzeEmpty').style.display = 'none';
+    document.getElementById('analysisResult').style.display = 'none';
+
+    try {
+        const params = new URLSearchParams();
+        if (costPrice) params.set('cost_price', String(costPrice));
+        if (buyDate) params.set('buy_date', buyDate);
+        const query = params.toString() ? `?${params.toString()}` : '';
+        const res = await apiCall('GET', `${API_BASE}/api/stock/${code}${query}`);
+        state.stockData = res.data;
+        renderAnalysisResult(res.data);
+        document.getElementById('analysisResult').style.display = 'block';
+        // Refresh user info for updated credits
+        await fetchUserInfo();
+        // Refresh history
+        loadHistory();
+        showToast(`分析完成`, 'success');
+    } catch (e) {
+        showToast(e.message, 'error');
+        document.getElementById('analyzeEmpty').style.display = 'block';
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+function analyzeFromWatchlist(code) {
+    const normalizedCode = String(code || '').trim();
+    if (!normalizedCode) return;
+    if (window.location.hash !== '#/analyze') window.location.hash = '#/analyze';
+    navigateToPage('analyze');
+    const input = document.getElementById('stockCodeInput');
+    if (input) {
+        input.value = normalizedCode;
+        handleStockCodeInput();
+    }
+    analyzeStock(normalizedCode);
+}
+
+function renderAnalysisResult(data) {
+    const score = data.total_score || data.score || 0;
+    const rec = data.recommendation || '--';
+    const text = data.analysis_text || '';
+    const summaryText = buildTopSummary(data.summary_text, text);
+    const kline = data.kline_data || [];
+
+    // --- Stock Info (flat structure from backend) ---
+    document.getElementById('stockName').textContent = data.stock_name || '--';
+    document.getElementById('stockCode').textContent = (data.stock_code || '--');
+    document.getElementById('stockIndustry').textContent = data.industry || '--';
+
+    const fmtNum = (v) => { if (!v || v === '--') return '--'; const n = parseFloat(v); return n >= 100000000 ? (n/100000000).toFixed(2) + '亿' : n >= 10000 ? (n/10000).toFixed(2) + '万' : n.toFixed(2); };
+    document.getElementById('stockMarketCap').textContent = data.market_cap ? `${parseFloat(data.market_cap).toFixed(0)}亿` : '--';
+    document.getElementById('stockPE').textContent = data.pe_ratio ? `${parseFloat(data.pe_ratio).toFixed(2)}` : '--';
+    document.getElementById('stockFloatCap').textContent = data.pb_ratio ? `${parseFloat(data.pb_ratio).toFixed(2)}` : '--';
+    document.getElementById('stockPrice').textContent = data.current_price ? `${parseFloat(data.current_price).toFixed(2)}` : '--';
+
+    // --- Score ---
+    const scoreVal = Math.round(score);
+    document.getElementById('scoreValue').textContent = scoreVal;
+    const scoreBg = scoreVal > 60 ? '#22c55e' : scoreVal > 40 ? '#eab308' : '#ef4444';
+    const deg = Math.min((scoreVal / 100) * 360, 360);
+    document.getElementById('scoreCircle').style.background = `conic-gradient(${scoreBg} ${deg}deg, #1a2754 ${deg}deg)`;
+    document.getElementById('scoreLabel').textContent = scoreVal > 80 ? '优秀' : scoreVal > 60 ? '良好' : scoreVal > 40 ? '一般' : '较差';
+
+    // --- Recommendation ---
+    const recMap = {
+        '强烈买入': ['recommend-buy-strong', '强烈买入 📈'],
+        '买入': ['recommend-buy', '买入 ↗️'],
+        '观望': ['recommend-hold', '观望 ⏳'],
+        '卖出': ['recommend-sell', '卖出 ↘️'],
+        '强烈卖出': ['recommend-sell-strong', '强烈卖出 📉']
+    };
+    const recInfo = recMap[rec] || ['recommend-hold', rec];
+    const badge = document.getElementById('recommendBadge');
+    badge.className = recInfo[0] + ' rounded-xl px-6 py-3 w-full max-w-[200px] text-center';
+    document.getElementById('recommendText').textContent = recInfo[1];
+
+    // --- Time & Credits ---
+    document.getElementById('analysisTime').textContent = `🕐 ${new Date().toLocaleString('zh-CN')}`;
+
+    // --- Analysis Text ---
+    const analysisTextEl = document.getElementById('analysisText');
+    analysisTextEl.textContent = summaryText || '暂无分析摘要';
+
+    // --- Detailed Report (monospace) ---
+    const reportCard = document.getElementById('detailedReportCard');
+    const reportText = document.getElementById('detailedReportText');
+    if (text && text.trim()) {
+        reportText.textContent = text;
+        reportCard.style.display = 'block';
+    } else {
+        reportCard.style.display = 'none';
+    }
+
+    // --- K-line Chart ---
+    if (kline && kline.length > 0) renderKlineChart(kline);
+
+    // --- Technical Indicators ---
+    renderTechnicalCharts(kline, data);
+
+    // --- Indicator Values ---
+    renderIndicatorValues(data);
+
+    // --- Enhanced Cards ---
+    renderEnhancedCards(data);
+}
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[ch]));
+}
+
+function formatTechnicalAction(value, fallbackText = '--') {
+    if (value === null || value === undefined || value === '') return fallbackText;
+    if (typeof value === 'object') {
+        const operation = String(value.operation || value.technical_operation || value.action || value.recommendation || '').trim();
+        const position = String(value.position || value.technical_position || value.size || value.weight || '').trim();
+        if (operation && position) return `${operation} / ${position}`;
+        if (operation) return operation;
+        if (position) return position;
+        const rawText = String(value.text || value.summary || value.name || value.label || '').trim();
+        return rawText || fallbackText;
+    }
+    const text = String(value).trim();
+    return text || fallbackText;
+}
+
+function buildTopSummary(summaryText, analysisText) {
+    const directSummary = String(summaryText || '').trim();
+    if (directSummary) return directSummary;
+
+    const source = String(analysisText || '').trim();
+    if (!source) return '';
+
+    const lineParts = source.split(/\n+/).map(line => line.trim()).filter(Boolean);
+    if (lineParts.length >= 3) return lineParts.slice(0, 5).join('\n');
+
+    const sentenceParts = (source.match(/[^。！？；;.!?]+[。！？；;.!?]?/g) || [])
+        .map(part => part.trim())
+        .filter(Boolean);
+    if (sentenceParts.length >= 3) return sentenceParts.slice(0, 5).join('\n');
+
+    const compactSource = source.replace(/\s+/g, ' ');
+    const chunkSize = compactSource.length > 120 ? 30 : compactSource.length > 60 ? 24 : 18;
+    const chunks = compactSource.match(new RegExp(`.{1,${chunkSize}}`, 'g')) || [compactSource];
+    return chunks.slice(0, 5).map(part => part.trim()).filter(Boolean).join('\n');
+}
+
+// ===================== K-LINE CHART =====================
+function renderKlineChart(data) {
+    const period = state.klinePeriod;
+    const slicedData = data.slice(-period);
+
+    const dates = slicedData.map(d => d.date || d.trade_date || '');
+    const ohlc = slicedData.map(d => [d.open, d.close, d.low, d.high]);
+    const volumes = slicedData.map(d => d.volume || 0);
+
+    // Calculate MAs
+    const calcMA = (arr, period) => {
+        const result = [];
+        for (let i = 0; i < arr.length; i++) {
+            if (i < period - 1) { result.push('-'); continue; }
+            let sum = 0;
+            for (let j = i - period + 1; j <= i; j++) sum += arr[j][1]; // close price
+            result.push(+(sum / period).toFixed(2));
+        }
+        return result;
+    };
+
+    const closePrices = slicedData.map(d => d.close);
+    const ma5 = calcMA(slicedData, 5);
+    const ma10 = calcMA(slicedData, 10);
+    const ma20 = calcMA(slicedData, 20);
+    const ma60 = calcMA(slicedData, 60);
+
+    // Volume colors
+    const volColors = slicedData.map(d => d.close >= d.open ? COLORS.volUp : COLORS.volDown);
+
+
+    if (state.charts.kline) state.charts.kline.dispose();
+    const dom = document.getElementById('klineChart');
+    state.charts.kline = echarts.init(dom, 'dark', { renderer: 'canvas' });
+
+    const option = {
+        backgroundColor: 'transparent',
+        animation: false,
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: { type: 'cross' },
+            backgroundColor: '#16213e',
+            borderColor: '#1e3a5f',
+            textStyle: { color: '#e2e8f0', fontSize: 12 }
+        },
+        axisPointer: { link: [{ xAxisIndex: 'all' }] },
+        grid: [{ left: '6%', right: '6%', top: '5%', height: '60%' }, { left: '6%', right: '6%', top: '75%', height: '18%' }],
+        xAxis: [{
+            type: 'category',
+            data: dates,
+            axisLine: { lineStyle: { color: '#1e3a5f' } },
+            axisLabel: { color: '#5a7a94', fontSize: 10, interval: Math.max(Math.floor(dates.length / 10), 1) },
+            splitLine: { show: false },
+            gridIndex: 0
+        }, {
+            type: 'category',
+            data: dates,
+            axisLine: { lineStyle: { color: '#1e3a5f' } },
+            axisLabel: { show: false },
+            splitLine: { show: false },
+            gridIndex: 1
+        }],
+        yAxis: [{
+            scale: true,
+            splitNumber: 5,
+            splitLine: { lineStyle: { color: '#1e3a5f', type: 'dashed' } },
+            axisLabel: { color: '#5a7a94', fontSize: 10 },
+            gridIndex: 0
+        }, {
+            scale: true,
+            splitNumber: 3,
+            splitLine: { show: false },
+            axisLabel: { color: '#5a7a94', fontSize: 10 },
+            gridIndex: 1
+        }],
+        dataZoom: [{
+            type: 'inside',
+            xAxisIndex: [0, 1],
+            start: 0,
+            end: 100,
+            minSpan: 10,
+            maxSpan: 100
+        }, {
+            show: true,
+            xAxisIndex: [0, 1],
+            type: 'slider',
+            bottom: 2,
+            height: 12,
+            borderColor: '#1e3a5f',
+            backgroundColor: '#1a1a2e',
+            fillerColor: 'rgba(15,52,96,0.4)',
+            handleStyle: { color: '#0f3460' },
+            labelStyle: { color: '#5a7a94', fontSize: 9 }
+        }],
+        series: [{
+            name: 'K线',
+            type: 'candlestick',
+            xAxisIndex: 0,
+            yAxisIndex: 0,
+            data: ohlc,
+            itemStyle: {
+                color: COLORS.up,       // red for up (A-stock)
+                color0: COLORS.down,    // green for down
+                borderColor: COLORS.up,
+                borderColor0: COLORS.down
+            }
+        }, {
+            name: 'MA5',
+            type: 'line',
+            xAxisIndex: 0,
+            yAxisIndex: 0,
+            data: ma5,
+            smooth: true,
+            symbol: 'none',
+            lineStyle: { width: 1.5, color: COLORS.ma5 }
+        }, {
+            name: 'MA10',
+            type: 'line',
+            xAxisIndex: 0,
+            yAxisIndex: 0,
+            data: ma10,
+            smooth: true,
+            symbol: 'none',
+            lineStyle: { width: 1.5, color: COLORS.ma10 }
+        }, {
+            name: 'MA20',
+            type: 'line',
+            xAxisIndex: 0,
+            yAxisIndex: 0,
+            data: ma20,
+            smooth: true,
+            symbol: 'none',
+            lineStyle: { width: 1.5, color: COLORS.ma20 }
+        }, {
+            name: 'MA60',
+            type: 'line',
+            xAxisIndex: 0,
+            yAxisIndex: 0,
+            data: ma60,
+            smooth: true,
+            symbol: 'none',
+            lineStyle: { width: 1.5, color: COLORS.ma60 }
+        }, {
+            name: '成交量',
+            type: 'bar',
+            xAxisIndex: 1,
+            yAxisIndex: 1,
+            data: volumes,
+            itemStyle: { color: (params) => volColors[params.dataIndex] }
+        }]
+    };
+    state.charts.kline.setOption(option);
+    state.charts.kline.on('dataZoom', updateZoomedKline);
+    setTimeout(() => state.charts.kline && state.charts.kline.resize(), 200);
+}
+
+function updateZoomedKline() {
+    // MA recalculation on zoom can be complex; for now we keep all data shown
+}
+
+function changeKlinePeriod(days) {
+    state.klinePeriod = days;
+    document.querySelectorAll('#klinePeriods button').forEach(b => {
+        b.className = 'text-xs px-2 py-1 rounded ' + (parseInt(b.textContent) === days ? 'bg-accent text-white' : 'bg-card-light text-subtle');
+    });
+    if (state.stockData && state.stockData.kline_data) renderKlineChart(state.stockData.kline_data);
+}
+
+// ===================== TECHNICAL INDICATOR CHARTS =====================
+function renderTechnicalCharts(klineData, data) {
+    if (!klineData || klineData.length === 0) return;
+    const dates = klineData.map(d => d.date || d.trade_date || '');
+    const closes = klineData.map(d => d.close);
+    const highs = klineData.map(d => d.high);
+    const lows = klineData.map(d => d.low);
+
+    // 从K线数据计算指标序列
+    const macdResult = calcMACDSeq(closes);
+    const kdjResult = calcKDJSeq(highs, lows, closes);
+    const rsiSeq = calcRSISeq(closes, 14);
+    const bollResult = calcBOLLSeq(closes, 20, 2);
+
+    renderMACD(dates, macdResult);
+    renderKDJ(dates, kdjResult);
+    renderRSI(dates, rsiSeq);
+    renderBOLL(dates, klineData, bollResult);
+}
+
+// 前端计算MACD序列
+function calcMACDSeq(closes, fast=12, slow=26, signal=9) {
+    const ema = (data, period) => {
+        const k = 2 / (period + 1);
+        const result = [data[0]];
+        for (let i = 1; i < data.length; i++) result.push(data[i] * k + result[i-1] * (1-k));
+        return result;
+    };
+    const emaFast = ema(closes, fast);
+    const emaSlow = ema(closes, slow);
+    const dif = emaFast.map((v, i) => +(v - emaSlow[i]).toFixed(4));
+    const dea = ema(dif, signal).map(v => +v.toFixed(4));
+    const macd = dif.map((v, i) => +((v - dea[i]) * 2).toFixed(4));
+    return { dif, dea, macd };
+}
+
+// 前端计算KDJ序列
+function calcKDJSeq(highs, lows, closes, period=9) {
+    const k = [], d = [], j = [];
+    let prevK = 50, prevD = 50;
+    for (let i = 0; i < closes.length; i++) {
+        if (i < period - 1) { k.push(50); d.push(50); j.push(50); continue; }
+        let hMax = -Infinity, lMin = Infinity;
+        for (let x = i - period + 1; x <= i; x++) { hMax = Math.max(hMax, highs[x]); lMin = Math.min(lMin, lows[x]); }
+        const rsv = hMax === lMin ? 50 : ((closes[i] - lMin) / (hMax - lMin)) * 100;
+        const kk = (2/3) * prevK + (1/3) * rsv;
+        const dd = (2/3) * prevD + (1/3) * kk;
+        k.push(+kk.toFixed(2)); d.push(+dd.toFixed(2)); j.push(+(3*kk - 2*dd).toFixed(2));
+        prevK = kk; prevD = dd;
+    }
+    return { k, d, j };
+}
+
+// 前端计算RSI序列
+function calcRSISeq(closes, period=14) {
+    const result = [50];
+    for (let i = 1; i < closes.length; i++) {
+        if (i < period) { result.push(50); continue; }
+        let gains = 0, losses = 0;
+        for (let x = i - period + 1; x <= i; x++) {
+            const diff = closes[x] - closes[x-1];
+            if (diff > 0) gains += diff; else losses -= diff;
+        }
+        const avgGain = gains / period;
+        const avgLoss = losses / period;
+        const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+        result.push(+(100 - 100 / (1 + rs)).toFixed(2));
+    }
+    return result;
+}
+
+// 前端计算布林带序列
+function calcBOLLSeq(closes, period=20, mult=2) {
+    const upper = [], mid = [], lower = [];
+    for (let i = 0; i < closes.length; i++) {
+        if (i < period - 1) { upper.push(null); mid.push(null); lower.push(null); continue; }
+        let sum = 0;
+        for (let x = i - period + 1; x <= i; x++) sum += closes[x];
+        const ma = sum / period;
+        let sqSum = 0;
+        for (let x = i - period + 1; x <= i; x++) sqSum += (closes[x] - ma) ** 2;
+        const std = Math.sqrt(sqSum / period);
+        mid.push(+ma.toFixed(2));
+        upper.push(+(ma + mult * std).toFixed(2));
+        lower.push(+(ma - mult * std).toFixed(2));
+    }
+    return { upper, mid, lower };
+}
+
+function renderMACD(dates, macdResult) {
+    const dif = macdResult.dif || [];
+    const dea = macdResult.dea || [];
+    const bar = macdResult.macd || [];
+
+    const chartDom = document.getElementById('macdChart');
+    if (state.charts.macd) state.charts.macd.dispose();
+    state.charts.macd = echarts.init(chartDom, 'dark', { renderer: 'canvas' });
+
+    const barColors = bar.map(v => v >= 0 ? COLORS.up : COLORS.down);
+    // 零轴 markLine
+    const zeroMarkLine = {
+        silent: true,
+        symbol: 'none',
+        data: [{
+            yAxis: 0,
+            label: { show: true, formatter: '0', position: 'insideEndTop', color: '#8ba4b8', fontSize: 10 },
+            lineStyle: { color: '#5a7a94', type: 'solid', width: 1, opacity: 0.6 }
+        }]
+    };
+    const option = {
+        backgroundColor: 'transparent',
+        animation: false,
+        grid: { left: '12%', right: '8%', top: '10%', bottom: '10%' },
+        tooltip: { trigger: 'axis', backgroundColor: '#16213e', borderColor: '#1e3a5f', textStyle: { color: '#e2e8f0', fontSize: 11 } },
+        xAxis: { type: 'category', data: dates, axisLabel: { color: '#5a7a94', fontSize: 9, interval: Math.max(Math.floor(dates.length / 8), 1), rotate: 30 }, axisLine: { lineStyle: { color: '#1e3a5f' } }, splitLine: { show: false } },
+        yAxis: { scale: true, splitLine: { lineStyle: { color: '#1e3a5f', type: 'dashed' } }, axisLabel: { show: true, color: '#5a7a94', fontSize: 9 } },
+        legend: { show: true, top: 2, right: 10, textStyle: { color: '#5a7a94', fontSize: 10 } },
+        series: [
+            { name: 'DIF', type: 'line', data: dif, smooth: true, symbol: 'none', lineStyle: { width: 1.5, color: '#4a9eff' } },
+            { name: 'DEA', type: 'line', data: dea, smooth: true, symbol: 'none', lineStyle: { width: 1.5, color: '#f59e0b' } },
+            { name: 'MACD', type: 'bar', data: bar, itemStyle: { color: (p) => barColors[p.dataIndex] }, markLine: zeroMarkLine }
+        ]
+    };
+    state.charts.macd.setOption(option);
+    setTimeout(() => state.charts.macd && state.charts.macd.resize(), 50);
+}
+
+function renderKDJ(dates, kdjResult) {
+    const k = kdjResult.k || [];
+    const d = kdjResult.d || [];
+    const j = kdjResult.j || [];
+
+    const chartDom = document.getElementById('kdjChart');
+    if (state.charts.kdj) state.charts.kdj.dispose();
+    state.charts.kdj = echarts.init(chartDom, 'dark', { renderer: 'canvas' });
+
+    // Overbought/oversold zones with visible labels
+    const markLines = {
+        silent: true,
+        symbol: 'none',
+        data: [
+            { yAxis: 80, label: { show: true, formatter: '80', position: 'insideEndTop', color: '#ef4444', fontSize: 10, fontWeight: 'bold' }, lineStyle: { color: '#ef4444', type: 'dashed', width: 1 } },
+            { yAxis: 20, label: { show: true, formatter: '20', position: 'insideEndBottom', color: '#22c55e', fontSize: 10, fontWeight: 'bold' }, lineStyle: { color: '#22c55e', type: 'dashed', width: 1 } }
+        ]
+    };
+
+    const option = {
+        backgroundColor: 'transparent',
+        animation: false,
+        grid: { left: '12%', right: '8%', top: '10%', bottom: '10%' },
+        tooltip: { trigger: 'axis', backgroundColor: '#16213e', borderColor: '#1e3a5f', textStyle: { color: '#e2e8f0', fontSize: 11 } },
+        xAxis: { type: 'category', data: dates, axisLabel: { color: '#5a7a94', fontSize: 9, interval: Math.max(Math.floor(dates.length / 8), 1), rotate: 30 }, axisLine: { lineStyle: { color: '#1e3a5f' } }, splitLine: { show: false } },
+        yAxis: { min: 0, max: 100, interval: 20, splitLine: { lineStyle: { color: '#1e3a5f', type: 'dashed' } }, axisLabel: { show: true, color: '#5a7a94', fontSize: 9 } },
+        legend: { show: true, top: 2, right: 10, textStyle: { color: '#5a7a94', fontSize: 10 } },
+        series: [
+            { name: 'K', type: 'line', data: k, smooth: true, symbol: 'none', lineStyle: { width: 2, color: '#fbbf24' }, markLine: markLines },
+            { name: 'D', type: 'line', data: d, smooth: true, symbol: 'none', lineStyle: { width: 2, color: '#3b82f6' } },
+            { name: 'J', type: 'line', data: j, smooth: true, symbol: 'none', lineStyle: { width: 2, color: '#a855f7' } }
+        ]
+    };
+    state.charts.kdj.setOption(option);
+    setTimeout(() => state.charts.kdj && state.charts.kdj.resize(), 50);
+}
+
+function renderRSI(dates, rsiSeq) {
+
+    const chartDom = document.getElementById('rsiChart');
+    if (state.charts.rsi) state.charts.rsi.dispose();
+    state.charts.rsi = echarts.init(chartDom, 'dark', { renderer: 'canvas' });
+
+    const markLines = {
+        silent: true,
+        symbol: 'none',
+        data: [
+            { yAxis: 70, label: { show: true, formatter: '70', position: 'insideEndTop', color: '#ef4444', fontSize: 10, fontWeight: 'bold' }, lineStyle: { color: '#ef4444', type: 'dashed', width: 1 } },
+            { yAxis: 30, label: { show: true, formatter: '30', position: 'insideEndBottom', color: '#22c55e', fontSize: 10, fontWeight: 'bold' }, lineStyle: { color: '#22c55e', type: 'dashed', width: 1 } }
+        ]
+    };
+
+    const option = {
+        backgroundColor: 'transparent',
+        animation: false,
+        grid: { left: '12%', right: '8%', top: '10%', bottom: '10%' },
+        tooltip: { trigger: 'axis', backgroundColor: '#16213e', borderColor: '#1e3a5f', textStyle: { color: '#e2e8f0', fontSize: 11 } },
+        xAxis: { type: 'category', data: dates, axisLabel: { color: '#5a7a94', fontSize: 9, interval: Math.max(Math.floor(dates.length / 8), 1), rotate: 30 }, axisLine: { lineStyle: { color: '#1e3a5f' } }, splitLine: { show: false } },
+        yAxis: { min: 0, max: 100, interval: 20, splitLine: { lineStyle: { color: '#1e3a5f', type: 'dashed' } }, axisLabel: { show: true, color: '#5a7a94', fontSize: 9 } },
+        legend: { show: true, top: 2, right: 10, textStyle: { color: '#5a7a94', fontSize: 10 } },
+        series: [
+            { name: 'RSI14', type: 'line', data: rsiSeq, smooth: true, symbol: 'none', lineStyle: { width: 1.5, color: '#f59e0b' }, markLine: markLines }
+        ]
+    };
+    state.charts.rsi.setOption(option);
+    setTimeout(() => state.charts.rsi && state.charts.rsi.resize(), 50);
+}
+
+function renderBOLL(dates, klineData, bollResult) {
+    const upper = bollResult.upper || [];
+    const middle = bollResult.mid || [];
+    const lower = bollResult.lower || [];
+
+    const opens = klineData.map(d => d.open);
+    const closes = klineData.map(d => d.close);
+    const chartDom = document.getElementById('bollChart');
+    if (state.charts.boll) state.charts.boll.dispose();
+    state.charts.boll = echarts.init(chartDom, 'dark', { renderer: 'canvas' });
+
+    // Build candlestick data with A-stock colors (red up, green down)
+    const candleData = klineData.map(d => [d.open, d.close, d.low, d.high]);
+
+    const option = {
+        backgroundColor: 'transparent',
+        animation: false,
+        grid: { left: '12%', right: '8%', top: '10%', bottom: '10%' },
+        tooltip: { trigger: 'axis', backgroundColor: '#16213e', borderColor: '#1e3a5f', textStyle: { color: '#e2e8f0', fontSize: 11 } },
+        xAxis: { type: 'category', data: dates, axisLabel: { color: '#5a7a94', fontSize: 9, interval: Math.max(Math.floor(dates.length / 8), 1), rotate: 30 }, axisLine: { lineStyle: { color: '#1e3a5f' } }, splitLine: { show: false } },
+        yAxis: { scale: true, splitLine: { lineStyle: { color: '#1e3a5f', type: 'dashed' } }, axisLabel: { show: true, color: '#5a7a94', fontSize: 9 } },
+        legend: { show: true, top: 2, right: 10, textStyle: { color: '#5a7a94', fontSize: 10 } },
+        series: [
+            {
+                name: 'K线', type: 'candlestick', data: candleData,
+                itemStyle: {
+                    color: COLORS.up,       // 上涨实体填充红
+                    color0: COLORS.down,    // 下跌实体填充绿
+                    borderColor: COLORS.up,
+                    borderColor0: COLORS.down
+                }
+            },
+            {
+                name: '布林上轨', type: 'line', data: upper, smooth: true, symbol: 'none',
+                lineStyle: { width: 1, color: 'rgba(239,68,68,0.5)' },
+                areaStyle: { color: 'rgba(15,52,96,0.1)' }
+            },
+            { name: '布林中轨', type: 'line', data: middle, smooth: true, symbol: 'none', lineStyle: { width: 1.5, color: '#f59e0b' } },
+            {
+                name: '布林下轨', type: 'line', data: lower, smooth: true, symbol: 'none',
+                lineStyle: { width: 1, color: 'rgba(34,197,94,0.5)' }
+            }
+        ]
+    };
+    state.charts.boll.setOption(option);
+    setTimeout(() => state.charts.boll && state.charts.boll.resize(), 50);
+}
+
+// ===================== INDICATOR VALUES =====================
+// ===================== ENHANCED ANALYSIS CARDS =====================
+function renderEnhancedCards(data) {
+    // --- Trend Card ---
+    const trend = data.trend;
+    if (trend) {
+        const shortDir = trend.short && trend.short.icon ? trend.short.icon + ' ' + trend.short.desc : '--';
+        const midDir = trend.mid && trend.mid.icon ? trend.mid.icon + ' ' + trend.mid.desc : '--';
+        const longDir = trend.long && trend.long.icon ? trend.long.icon + ' ' + trend.long.desc : '--';
+        document.getElementById('trendShort').textContent = shortDir;
+        document.getElementById('trendMid').textContent = midDir;
+        document.getElementById('trendLong').textContent = longDir;
+        document.getElementById('trendSummary').textContent = trend.summary || '--';
+        document.getElementById('trendCard').style.display = 'block';
+    }
+
+    // --- Key Levels Card ---
+    const supports = data.support_levels;
+    const resistances = data.resistance_levels;
+    const supportLabels = data.support_labels || [];
+    const resistanceLabels = data.resistance_labels || [];
+    if (supports && supports.length > 0) {
+        document.getElementById('supportLevels').innerHTML = supports.map((p, i) => {
+            const label = supportLabels[i] ? `（${supportLabels[i]}）` : '';
+            return `<p class="mb-1 font-mono text-green-400">${p} ${label}</p>`;
+        }).join('');
+        document.getElementById('keyLevelsCard').style.display = 'block';
+    }
+    if (resistances && resistances.length > 0) {
+        document.getElementById('resistanceLevels').innerHTML = resistances.map((p, i) => {
+            const label = resistanceLabels[i] ? `（${resistanceLabels[i]}）` : '';
+            return `<p class="mb-1 font-mono text-red-400">${p} ${label}</p>`;
+        }).join('');
+        document.getElementById('keyLevelsCard').style.display = 'block';
+    }
+
+    // --- Signals Card ---
+    const sig = data.signals;
+    if (sig) {
+        const buyDiv = document.getElementById('buySignals');
+        const sellDiv = document.getElementById('sellSignals');
+        if (sig.buy && sig.buy.length > 0) {
+            buyDiv.innerHTML = sig.buy.map(s => `<p class="text-green-300 text-xs mb-1">✅ ${s}</p>`).join('');
+        } else {
+            buyDiv.innerHTML = '<p class="text-subtle text-xs">暂无买入信号</p>';
+        }
+        if (sig.sell && sig.sell.length > 0) {
+            sellDiv.innerHTML = sig.sell.map(s => `<p class="text-red-300 text-xs mb-1">❌ ${s}</p>`).join('');
+        } else {
+            sellDiv.innerHTML = '<p class="text-subtle text-xs">暂无卖出信号</p>';
+        }
+        const strengthMap = { buy: '偏多 📈', sell: '偏空 📉', neutral: '中性 ⏳' };
+        document.getElementById('signalStrength').textContent = strengthMap[sig.strength] || sig.strength || '--';
+        document.getElementById('signalsCard').style.display = 'block';
+    }
+
+    // --- Strategy Exit Card ---
+    renderStrategyExitCard(data.strategy_exit, data);
+
+    // --- Action Card ---
+    const act = data.action;
+    document.getElementById('actionCard').style.display = 'none';
+    document.getElementById('actionBasisBlock').style.display = 'none';
+    if (act) {
+        const technicalActionValue = data.technical_action ?? act.technical_action ?? data.base_recommendation ?? act.operation;
+        const technicalAction = formatTechnicalAction(technicalActionValue, data.base_recommendation || act.operation || '--');
+        const actionBasis = act.basis || act.reason || data.action_basis || data.reason || '';
+        document.getElementById('actOperation').textContent = act.operation || data.recommendation || '--';
+        document.getElementById('actPosition').textContent = act.position || '--';
+        document.getElementById('actStopLoss').textContent = act.stop_loss || '--';
+        document.getElementById('actTakeProfit').textContent = act.take_profit || '--';
+        document.getElementById('actPeriod').textContent = act.period || '--';
+        document.getElementById('actRiskLevel').textContent = act.risk_level || '--';
+
+        // Color operation based on signal
+        const opEl = document.getElementById('actOperation');
+        const op = (act.operation || '').toLowerCase();
+        if (op.includes('买入') || op.includes('加仓')) {
+            opEl.className = 'text-sm font-bold text-green-400';
+        } else if (op.includes('卖出') || op.includes('减仓')) {
+            opEl.className = 'text-sm font-bold text-red-400';
+        } else {
+            opEl.className = 'text-sm font-bold text-yellow-400';
+        }
+
+        // Color risk level
+        const rlEl = document.getElementById('actRiskLevel');
+        const rl = act.risk_level || '';
+        if (rl === '低') rlEl.className = 'text-sm font-medium text-green-400';
+        else if (rl === '中等') rlEl.className = 'text-sm font-medium text-yellow-400';
+        else rlEl.className = 'text-sm font-medium text-red-400';
+
+        document.getElementById('actTechnicalAction').textContent = technicalAction;
+        const adjustmentText = data.strategy_adjusted
+            ? `策略调整：综合建议已由${data.base_recommendation || technicalAction || '--'}调整为${data.recommendation || '--'}。`
+            : '策略调整：暂无策略卖点调整。';
+        const positionSource = act.position
+            ? `半仓/仓位来源：${act.position}来自技术面原始建议，综合建议会叠加策略卖点风险调整。`
+            : '';
+        const basisLines = [
+            actionBasis ? `依据：${actionBasis}` : '',
+            positionSource,
+            adjustmentText
+        ].filter(Boolean);
+        const basisBlock = document.getElementById('actionBasisBlock');
+        document.getElementById('actBasisReason').textContent = basisLines.join('\n');
+        basisBlock.style.display = basisLines.length ? 'block' : 'none';
+
+        document.getElementById('actionCard').style.display = 'block';
+    }
+
+    // --- Flow Analysis Card ---
+    const fs = data.flow_signals;
+    const tm = data.flow_timing;
+    const ld = data.flow_leadership;
+    if (fs && tm && ld) {
+        const flowScore = data.flow_total_score || 0;
+        // Score circle
+        document.getElementById('flowScoreValue').textContent = flowScore;
+        const flowDeg = Math.min((flowScore / 100) * 360, 360);
+        const flowColor = flowScore >= 70 ? '#22c55e' : flowScore >= 45 ? '#eab308' : '#ef4444';
+        document.getElementById('flowScoreCircle').style.background = `conic-gradient(${flowColor} ${flowDeg}deg, #1a2754 ${flowDeg}deg)`;
+        // Recommendation
+        const rec = data.flow_recommendation || '--';
+        const recEl = document.getElementById('flowRecommendation');
+        recEl.textContent = rec;
+        if (rec === '重点关注') recEl.className = 'text-xs mt-2 font-medium text-green-400';
+        else if (rec === '可参与') recEl.className = 'text-xs mt-2 font-medium text-yellow-400';
+        else if (rec === '观望') recEl.className = 'text-xs mt-2 font-medium text-orange-400';
+        else recEl.className = 'text-xs mt-2 font-medium text-red-400';
+        // Phase
+        const phaseColors = { '启动': '#3b82f6', '加速': '#22c55e', '分歧': '#eab308', '退潮': '#ef4444' };
+        const phaseBadge = document.getElementById('flowPhaseBadge');
+        phaseBadge.textContent = tm.phase + '期';
+        phaseBadge.style.color = phaseColors[tm.phase] || '#e2e8f0';
+        phaseBadge.style.background = (phaseColors[tm.phase] || '#4a9eff') + '22';
+        document.getElementById('flowPhaseDesc').textContent = tm.phase_desc || '--';
+        // Volume burst
+        document.getElementById('flowVolumeBurst').textContent = fs.volume_burst;
+        const burstPct = Math.min((fs.volume_burst / 3.0) * 100, 100);
+        document.getElementById('flowVolumeBar').style.width = burstPct + '%';
+        document.getElementById('flowVolumeDesc').textContent = fs.flow_phase || '--';
+        // Leadership
+        document.getElementById('flowLeadershipScore').textContent = ld.leadership_score;
+        const ldLevelEl = document.getElementById('flowLeadershipLevel');
+        ldLevelEl.textContent = ld.leadership_level;
+        if (ld.leadership_score >= 65) ldLevelEl.className = 'text-sm font-medium mb-1 text-green-400';
+        else if (ld.leadership_score >= 45) ldLevelEl.className = 'text-sm font-medium mb-1 text-yellow-400';
+        else ldLevelEl.className = 'text-sm font-medium mb-1 text-red-400';
+        document.getElementById('flowLeadershipDesc').textContent = ld.leadership_desc || '--';
+        // Detail indicators
+        const pmEl = document.getElementById('flowPriceMomentum');
+        pmEl.textContent = (fs.price_momentum >= 0 ? '+' : '') + fs.price_momentum + '%';
+        pmEl.className = 'text-sm font-mono font-medium ' + (fs.price_momentum >= 0 ? 'text-red-400' : 'text-green-400');
+        document.getElementById('flowVolatility').textContent = fs.volatility + '%';
+        document.getElementById('flowUpDays').textContent = fs.up_days + '天';
+        document.getElementById('flowNameRecognition').textContent = ld.name_recognition || '--';
+        // Timing advice
+        document.getElementById('flowTimingAdvice').textContent = tm.hold_advice || '--';
+        document.getElementById('flowExitSignal').textContent = tm.exit_signal || '--';
+        document.getElementById('flowCard').style.display = 'block';
+    }
+}
+
+function renderStrategyExitCard(strategyExit, data) {
+    const card = document.getElementById('strategyExitCard');
+    if (!strategyExit) {
+        card.style.display = 'none';
+        return;
+    }
+
+    const riskMap = {
+        high: { label: '高风险', cls: 'strategy-risk-high', text: 'text-red-300' },
+        medium: { label: '中风险', cls: 'strategy-risk-medium', text: 'text-yellow-300' },
+        low: { label: '低风险', cls: 'strategy-risk-low', text: 'text-green-300' }
+    };
+    const normalizeRisk = (value) => {
+        const text = String(value || '').toLowerCase();
+        if (text.includes('high') || text.includes('高') || text.includes('强')) return 'high';
+        if (text.includes('medium') || text.includes('mid') || text.includes('中') || text.includes('观察')) return 'medium';
+        return 'low';
+    };
+    const risk = riskMap[normalizeRisk(strategyExit.risk_level)] || riskMap.low;
+    card.className = `card mb-6 fade-in ${risk.cls}`;
+    document.getElementById('strategyExitSummary').textContent = strategyExit.summary || strategyExit.overall_summary || '--';
+    const riskBadge = document.getElementById('strategyRiskBadge');
+    riskBadge.textContent = `${risk.label} · ${strategyExit.risk_score || 0}分`;
+    riskBadge.className = `strategy-pill font-medium ${risk.text}`;
+
+    const adjustText = data && data.strategy_adjusted
+        ? `建议已由${data.base_recommendation || '--'}调整为${data.recommendation || '--'}`
+        : '未调整主建议';
+    document.getElementById('strategyAdjustBadge').textContent = adjustText;
+
+    const cardContainer = document.getElementById('strategyCards');
+    const isEtf = Boolean(data && (data.is_etf || String(data.instrument_type || '').toLowerCase() === 'etf'));
+    const renderSignalLine = (signal) => {
+        if (!signal) return '';
+        if (typeof signal === 'string') {
+            return `<p class="text-xs leading-relaxed text-subtle">• ${escapeHtml(signal)}</p>`;
+        }
+        const title = signal.title || signal.name || signal.signal || signal.summary || '信号';
+        const detail = signal.detail || signal.reason || signal.description || '';
+        const source = signal.source || signal.priority || '';
+        return `
+            <div class="rounded-md border border-theme/70 p-2">
+                <div class="flex items-center justify-between gap-2 mb-1">
+                    <span class="text-xs font-medium">${escapeHtml(title)}</span>
+                    ${source ? `<span class="strategy-pill">${escapeHtml(source)}</span>` : ''}
+                </div>
+                ${detail ? `<p class="text-xs leading-relaxed text-subtle">${escapeHtml(detail)}</p>` : ''}
+            </div>
+        `;
+    };
+    const renderSignalsDetails = (signals) => `
+        <details class="mt-3">
+            <summary class="cursor-pointer text-xs text-subtle select-none">卖点信号（${signals.length}）</summary>
+            <div class="space-y-2 mt-2">
+                ${signals.length ? signals.map(renderSignalLine).join('') : '<p class="text-xs text-subtle">暂无策略信号</p>'}
+            </div>
+        </details>
+    `;
+    const formatDecisionLabel = (strategy) => {
+        const label = strategy && strategy.decision_label;
+        if (label !== null && label !== undefined && String(label).trim()) return String(label).trim();
+        const raw = String((strategy && (strategy.decision || strategy.action || strategy.recommendation)) || '').trim();
+        const key = raw.toLowerCase();
+        const decisionMap = {
+            sell: '卖出',
+            exit: '卖出',
+            reduce: '减仓',
+            trim: '减仓',
+            hold: '持有',
+            wait: '观察',
+            observe: '观察',
+            caution: '谨慎观察',
+            blocked: '暂不触发',
+            block: '暂不触发',
+            watch: '观察'
+        };
+        if (key.includes('blocked') || key.includes('block')) return '暂不触发';
+        if (key.includes('watch') || key.includes('observe')) return '观察';
+        return decisionMap[key] || raw || '--';
+    };
+
+    if (isEtf) {
+        const etfMessage = strategyExit.etf_message || strategyExit.message || data.etf_message || data.strategy_exit_message || 'ETF 不参与个股卖点策略';
+        cardContainer.className = 'grid grid-cols-1 gap-4';
+        cardContainer.innerHTML = `
+            <div class="bg-card-light rounded-lg p-3">
+                <p class="text-sm font-medium mb-1">ETF 策略说明</p>
+                <p class="text-xs text-subtle leading-relaxed">${escapeHtml(etfMessage)}</p>
+            </div>
+        `;
+    } else {
+
+    const rawStrategies = strategyExit.strategies;
+    const strategyEntries = Array.isArray(rawStrategies)
+        ? rawStrategies.map((strategy, idx) => [String(idx), strategy])
+        : (rawStrategies && typeof rawStrategies === 'object' ? Object.entries(rawStrategies) : []);
+    const strategies = strategyEntries.filter(([key, strategy]) => key !== 't_plus_one' && strategy);
+    if (strategies.length) {
+        cardContainer.className = 'grid grid-cols-1 lg:grid-cols-2 gap-4';
+        cardContainer.innerHTML = strategies.map(([key, strategy], idx) => {
+            const riskKey = normalizeRisk(strategy.risk_level || strategy.risk || strategy.priority);
+            const riskMeta = riskMap[riskKey] || riskMap.low;
+            const strategySignals = Array.isArray(strategy.signals) ? strategy.signals.filter(Boolean) : [];
+            const decision = formatDecisionLabel(strategy);
+            const summary = strategy.summary || strategy.reason || strategy.description || '--';
+            const name = strategy.name || strategy.strategy_name || strategy.label || key || `策略 ${idx + 1}`;
+            return `
+                <div class="strategy-card strategy-card-${riskKey}">
+                    <div class="flex items-start justify-between gap-3 mb-3">
+                        <div>
+                            <p class="text-sm font-semibold">${escapeHtml(name)}</p>
+                            <p class="text-xs text-subtle mt-1">${escapeHtml(summary)}</p>
+                        </div>
+                        <span class="strategy-pill ${riskMeta.text}">${escapeHtml(riskMeta.label)}${strategy.risk_score != null ? ` · ${escapeHtml(strategy.risk_score)}` : ''}</span>
+                    </div>
+                    <div class="bg-accent/30 rounded-md px-3 py-2 mb-3 text-xs">
+                        <span class="text-subtle">决策：</span><span class="font-medium">${escapeHtml(decision)}</span>
+                    </div>
+                    ${renderSignalsDetails(strategySignals)}
+                </div>
+            `;
+        }).join('');
+    } else {
+        const signals = (strategyExit.signals || []).filter(Boolean);
+        const renderSignals = (items, emptyText) => {
+            if (!items.length) return `<p class="text-subtle text-xs">${emptyText}</p>`;
+            return items.map(renderSignalLine).filter(Boolean).join('');
+        };
+
+        const highSignals = signals.filter(s => s.priority === 'high');
+        const mediumSignals = signals.filter(s => s.priority === 'medium');
+        const supportSignals = signals.filter(s => s.priority === 'support');
+        const missing = (strategyExit.missing_context || []).map(text => ({
+            title: '数据限制',
+            source: '上下文',
+            detail: text,
+            priority: 'support'
+        }));
+
+        cardContainer.className = 'grid grid-cols-1 lg:grid-cols-3 gap-4';
+        cardContainer.innerHTML = `
+            <div class="bg-card-light rounded-lg p-3">
+                <p class="text-xs text-red-400 mb-2">强风险</p>
+                <div id="strategyHighSignals" class="text-sm space-y-2 text-subtle">${renderSignals(highSignals, '暂无强风险卖点')}</div>
+            </div>
+            <div class="bg-card-light rounded-lg p-3">
+                <p class="text-xs text-yellow-400 mb-2">观察风险</p>
+                <div id="strategyMediumSignals" class="text-sm space-y-2 text-subtle">${renderSignals(mediumSignals, '暂无观察风险')}</div>
+            </div>
+            <div class="bg-card-light rounded-lg p-3">
+                <p class="text-xs text-green-400 mb-2">强势/数据限制</p>
+                <div id="strategySupportSignals" class="text-sm space-y-2 text-subtle">${renderSignals([...supportSignals, ...missing], '暂无强势抵消或数据限制')}</div>
+            </div>
+        `;
+    }
+    }
+
+    const position = strategyExit.position || {};
+    const formatPercent = (value) => {
+        if (value === null || value === undefined || value === '') return '--';
+        const num = Number(value);
+        if (!Number.isFinite(num)) return String(value);
+        return `${num >= 0 ? '+' : ''}${num}%`;
+    };
+    const profit = formatPercent(position.profit_pct ?? position.current_profit_pct ?? position.current_profit ?? strategyExit.profit_pct);
+    const cost = position.cost_price ?? position.cost ?? data.cost_price ?? '--';
+    const buyDate = position.buy_trade_date || position.buy_date || position.trade_date || strategyExit.buy_trade_date || strategyExit.buy_date || data.buy_date || '--';
+    const minuteRaw = strategyExit.data_status && (strategyExit.data_status.minute || strategyExit.data_status.minute_data);
+    const minuteStatus = minuteRaw === 'available' || minuteRaw === true ? '分钟数据可用' : (minuteRaw === 'missing' || minuteRaw === false || minuteRaw == null ? '分钟数据降级' : `分钟数据${minuteRaw}`);
+    const eligibility = strategyExit.trade_eligibility || position.trade_eligibility || {};
+    const eligibilityText = typeof eligibility === 'string' ? eligibility.toLowerCase() : '';
+    const sameDayBuy = Boolean(
+        (eligibility && eligibility.same_day_buy) ||
+        eligibilityText.includes('same_day') ||
+        eligibilityText.includes('next_trade') ||
+        eligibilityText.includes('下一交易日') ||
+        strategyExit.same_day_buy ||
+        position.same_day_buy ||
+        (buyDate !== '--' && (buyDate === state.latestTradeDate || buyDate === strategyExit.latest_trade_date || buyDate === data.latest_trade_date))
+    );
+    const positionParts = [];
+    if (sameDayBuy) positionParts.push('下一交易日卖出预案');
+    positionParts.push(`买入交易日：${buyDate}`);
+    positionParts.push(`持仓成本：${cost}`);
+    positionParts.push(`当前持仓收益：${profit}`);
+    positionParts.push(minuteStatus);
+    document.getElementById('strategyPositionLine').textContent = positionParts.join(' · ');
+    card.style.display = 'block';
+}
+
+// ===================== INDICATOR VALUES =====================
+function renderIndicatorValues(data) {
+    const container = document.getElementById('indicatorValues');
+    const items = [];
+
+    // MACD (flat fields from backend: macd=DIF, macd_signal=DEA, macd_hist=MACD柱)
+    if (data.macd != null) {
+        items.push({ label: 'DIF', value: safeNum(null, data.macd, 4) });
+        items.push({ label: 'DEA', value: safeNum(null, data.macd_signal, 4) });
+        items.push({ label: 'MACD', value: safeNum(null, data.macd_hist, 4) });
+    }
+    // KDJ
+    if (data.kdj_k != null) {
+        items.push({ label: 'K值', value: safeNum(null, data.kdj_k) });
+        items.push({ label: 'D值', value: safeNum(null, data.kdj_d) });
+        items.push({ label: 'J值', value: safeNum(null, data.kdj_j) });
+    }
+    // RSI
+    if (data.rsi != null) {
+        items.push({ label: 'RSI', value: safeNum(null, data.rsi) });
+    }
+    // Bollinger
+    if (data.boll_upper != null) {
+        items.push({ label: '布林上轨', value: safeNum(null, data.boll_upper) });
+        items.push({ label: '布林中轨', value: safeNum(null, data.boll_mid) });
+        items.push({ label: '布林下轨', value: safeNum(null, data.boll_lower) });
+    }
+    // MA
+    if (data.ma5 != null) {
+        items.push({ label: 'MA5', value: safeNum(null, data.ma5) });
+        items.push({ label: 'MA10', value: safeNum(null, data.ma10) });
+        items.push({ label: 'MA20', value: safeNum(null, data.ma20) });
+        items.push({ label: 'MA60', value: safeNum(null, data.ma60) });
+    }
+    // Volume ratio
+    if (data.volume_ratio != null) {
+        items.push({ label: '量比', value: safeNum(null, data.volume_ratio) });
+    }
+
+    if (items.length === 0) {
+        container.innerHTML = '<p class="text-subtle text-sm col-span-full">暂无技术指标数据</p>';
+        return;
+    }
+
+    container.innerHTML = items.map(item => `
+        <div class="bg-card-light rounded-lg p-3 text-center">
+            <p class="text-xs text-subtle mb-1">${item.label}</p>
+            <p class="font-mono font-medium text-sm">${item.value}</p>
+        </div>
+    `).join('');
+}
+
+function safeNum(label, val, decimals = 2) {
+    if (val === null || val === undefined || val === '--') return '--';
+    if (Array.isArray(val)) {
+        const v = val[val.length - 1];
+        return v !== undefined && v !== null ? (typeof v === 'number' ? v.toFixed(decimals) : v) : '--';
+    }
+    return typeof val === 'number' ? val.toFixed(decimals) : val;
+}
+
+// ===================== HISTORY =====================
+async function loadHistory() {
+    try {
+        const res = await apiCall('GET', `${API_BASE}/api/history?limit=10`);
+        const list = document.getElementById('historyList');
+        const records = res.data || [];
+
+        if (records.length === 0) {
+            list.innerHTML = '<p class="text-subtle text-sm py-4 text-center">暂无分析记录</p>';
+            return;
+        }
+
+        list.innerHTML = records.map(r => {
+            const code = r.stock_code || r.code || '--';
+            const name = r.stock_name || r.name || '';
+            const score = r.total_score != null ? `${Math.round(r.total_score)}分` : (r.score != null ? `${Math.round(r.score)}分` : '--');
+            const rec = r.recommendation || '--';
+            const time = r.created_at ? new Date(r.created_at).toLocaleString('zh-CN') : '--';
+            return `
+                <div class="history-item flex items-center justify-between py-3 px-2 rounded-lg">
+                    <div>
+                        <span class="font-medium text-sm">${code}</span>
+                        ${name ? `<span class="text-subtle text-xs ml-2">${name}</span>` : ''}
+                    </div>
+                    <div class="flex items-center gap-3 text-xs">
+                        <span class="${score >= 60 ? 'text-green-400' : score >= 40 ? 'text-yellow-400' : 'text-red-400'}">${score}</span>
+                        <span class="text-subtle">${rec}</span>
+                        <span class="text-subtle hidden sm:inline">${time}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (e) {
+        // Silently fail for history
+    }
+}
+
+// ===================== WATCHLIST =====================
+let isAddFromEmpty = false;
+
+async function loadWatchlist() {
+    const container = document.getElementById('watchlistContent');
+    const empty = document.getElementById('watchlistEmpty');
+
+    try {
+        const res = await apiCall('GET', `${API_BASE}/api/watchlist`);
+        const items = res.data || [];
+
+        if (items.length === 0) {
+            container.innerHTML = '';
+            empty.style.display = 'block';
+            if (isAddFromEmpty) { isAddFromEmpty = false; showAddWatchlistModal(); }
+            return;
+        }
+
+        empty.style.display = 'none';
+        container.innerHTML = items.map((item, idx) => {
+            const code = item.stock_code || item.code || '--';
+            const name = item.stock_name || item.name || '';
+            const time = item.added_at ? new Date(item.added_at).toLocaleString('zh-CN') : '--';
+            const score = item.latest_score;
+            const scoreDisplay = score != null ? `${Math.round(score)}分` : '未分析';
+            const scoreClass = score != null ? (score >= 70 ? 'text-green-400' : score >= 50 ? 'text-yellow-400' : 'text-red-400') : 'text-subtle';
+            const rec = item.latest_recommendation || '';
+            return `
+                <div class="card flex items-center justify-between fade-in" style="animation-delay:${idx * 0.05}s">
+                    <div class="flex items-center gap-3 cursor-pointer" onclick="analyzeFromWatchlist('${code}')">
+                        <div class="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-sm font-bold">${name ? name.charAt(0) : code.slice(0,2)}</div>
+                        <div>
+                            <p class="font-medium text-sm">${code} <span class="text-subtle font-normal">${name}</span></p>
+                            <p class="text-xs text-subtle">添加于 ${time}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="text-right mr-2">
+                            <p class="text-sm font-bold ${scoreClass}">${scoreDisplay}</p>
+                            ${rec ? `<p class="text-xs text-subtle">${rec}</p>` : ''}
+                        </div>
+                        <button onclick="analyzeFromWatchlist('${code}')" class="text-xs btn-ghost px-3 py-1.5 rounded-lg">分析</button>
+                        <button onclick="removeWatchlist('${code}')" class="text-xs btn-danger px-2 py-1.5 rounded-lg">删除</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (e) {
+        document.getElementById('watchlistContent').innerHTML =
+            `<div class="card text-center py-8"><p class="text-subtle text-sm">加载自选股失败: ${e.message}</p></div>`;
+    }
+}
+
+function showAddWatchlistModal() {
+    document.getElementById('wlCode').value = '';
+    document.getElementById('wlName').value = '';
+    document.getElementById('wlModalError').style.display = 'none';
+    document.getElementById('addWatchlistModal').style.display = 'flex';
+}
+
+function hideModal(id) {
+    document.getElementById(id).style.display = 'none';
+}
+
+async function addToWatchlist() {
+    const code = document.getElementById('wlCode').value.trim();
+    const name = document.getElementById('wlName').value.trim();
+    const errEl = document.getElementById('wlModalError');
+    errEl.style.display = 'none';
+
+    if (!code) { showError(errEl, '请输入股票代码'); return; }
+    if (!/^\d{6}$/.test(code)) { showError(errEl, '请输入6位股票代码'); return; }
+
+    try {
+        await apiCall('POST', `${API_BASE}/api/watchlist`, { stock_code: code, stock_name: name || null });
+        hideModal('addWatchlistModal');
+        showToast('添加成功', 'success');
+        loadWatchlist();
+    } catch (e) {
+        showError(errEl, e.message);
+    }
+}
+
+async function removeWatchlist(code) {
+    if (!confirm('确定删除自选股 ' + code + ' 吗？')) return;
+    try {
+        await apiCall('DELETE', `${API_BASE}/api/watchlist/${code}`);
+        showToast('已删除', 'success');
+        loadWatchlist();
+    } catch (e) {
+        showToast(e.message, 'error');
+    }
+}
+
+// ===================== DAILY PICKS =====================
+const DAILY_PICK_STRATEGIES = [
+    { key: 'first_board_relay', name: '低位3连阳首板接力' },
+    { key: 'leader_chase', name: '龙头追击' },
+    { key: 'etf_rotation', name: 'ETF动量轮动' }
+];
+
+function normalizeDailyPicksPayload(payload) {
+    return payload && payload.data ? payload.data : payload;
+}
+
+function formatDailyDate(value) {
+    if (!value) return '--';
+    return escapeHtml(String(value).slice(0, 10));
+}
+
+function formatDailyTime(value) {
+    if (!value) return '--';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return escapeHtml(String(value));
+    return escapeHtml(date.toLocaleString('zh-CN', { hour12: false }));
+}
+
+function formatDailyNumber(value) {
+    if (value === null || value === undefined || value === '') return '--';
+    const num = Number(value);
+    return Number.isFinite(num) ? escapeHtml(num.toLocaleString('zh-CN')) : escapeHtml(value);
+}
+
+function formatDailyScore(value) {
+    if (value === null || value === undefined || value === '') return '--';
+    const num = Number(value);
+    if (!Number.isFinite(num)) return escapeHtml(value);
+    return escapeHtml(num.toFixed(num % 1 === 0 ? 0 : 1));
+}
+
+function formatDailyDataStatus(value) {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    if (typeof value === 'object') {
+        if (value.warning) return `警告: ${value.warning}`;
+        if (value.status) return value.status;
+        const entries = Object.entries(value).filter(([, item]) => item !== null && item !== undefined && item !== '');
+        if (!entries.length) return '';
+        return entries.slice(0, 2).map(([key, item]) => `${key}: ${item}`).join('；');
+    }
+    return String(value);
+}
+
+function normalizeTextList(value) {
+    if (!value) return [];
+    if (Array.isArray(value)) return value.map(item => String(item || '').trim()).filter(Boolean);
+    if (typeof value === 'object') return Object.values(value).map(item => String(item || '').trim()).filter(Boolean);
+    return String(value).split(/\n|；|;/).map(item => item.trim()).filter(Boolean);
+}
+
+function renderDailyTextList(items, emptyText, colorClass) {
+    const list = normalizeTextList(items);
+    if (!list.length) return `<p class="text-xs text-subtle">${escapeHtml(emptyText)}</p>`;
+    return list.slice(0, 4).map(item => `<p class="text-xs leading-relaxed ${colorClass}">• ${escapeHtml(item)}</p>`).join('');
+}
+
+function renderDailyMetrics(metrics) {
+    if (!metrics || typeof metrics !== 'object') {
+        return '<p class="text-xs text-subtle">暂无指标</p>';
+    }
+    const labels = {
+        close: '收盘',
+        price: '价格',
+        pct_chg: '涨跌幅',
+        change_pct: '涨跌幅',
+        turnover_rate: '换手',
+        volume_ratio: '量比',
+        amount: '成交额',
+        market_cap: '市值',
+        momentum: '动量',
+        ma5: 'MA5',
+        ma10: 'MA10',
+        ma20: 'MA20',
+        rsi: 'RSI',
+        score: '指标分'
+    };
+    const entries = Object.entries(metrics).filter(([, value]) => value !== null && value !== undefined && value !== '').slice(0, 8);
+    if (!entries.length) return '<p class="text-xs text-subtle">暂无指标</p>';
+    return `
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            ${entries.map(([key, value]) => `
+                <div class="bg-accent/30 rounded-md px-2 py-1.5 min-w-0">
+                    <p class="text-[11px] text-subtle truncate">${escapeHtml(labels[key] || key)}</p>
+                    <p class="text-xs font-mono truncate">${escapeHtml(value)}</p>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function renderRecommendationCard(item) {
+    const code = item.code || item.stock_code || '--';
+    const name = item.name || item.stock_name || '';
+    const rank = item.rank != null ? `#${item.rank}` : '#--';
+    const score = formatDailyScore(item.score);
+    const mode = item.mode || item.signal_mode || '--';
+    const dataStatus = formatDailyDataStatus(item.data_status);
+    const createdAt = item.created_at ? formatDailyTime(item.created_at) : '';
+
+    return `
+        <div class="strategy-card fade-in">
+            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+                <div class="min-w-0">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="strategy-pill text-accent font-medium">${escapeHtml(rank)}</span>
+                        <span class="font-mono text-sm font-semibold">${escapeHtml(code)}</span>
+                        ${name ? `<span class="text-sm font-medium truncate">${escapeHtml(name)}</span>` : ''}
+                    </div>
+                    <p class="text-xs text-subtle mt-1 break-words">模式：${escapeHtml(mode)}${dataStatus ? ` · 数据：${escapeHtml(dataStatus)}` : ''}${createdAt ? ` · ${createdAt}` : ''}</p>
+                </div>
+                <div class="shrink-0 bg-card-light border border-theme rounded-lg px-3 py-2 text-center min-w-[72px]">
+                    <p class="text-[11px] text-subtle">评分</p>
+                    <p class="text-base font-bold text-accent">${score}</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
+                <div class="bg-card-light rounded-lg p-3">
+                    <p class="text-xs text-green-400 mb-2">理由</p>
+                    <div class="space-y-1">${renderDailyTextList(item.reasons, '暂无理由', 'text-subtle')}</div>
+                </div>
+                <div class="bg-card-light rounded-lg p-3">
+                    <p class="text-xs text-yellow-400 mb-2">风险</p>
+                    <div class="space-y-1">${renderDailyTextList(item.risks, '暂无风险提示', 'text-subtle')}</div>
+                </div>
+            </div>
+            ${renderDailyMetrics(item.metrics)}
+        </div>
+    `;
+}
+
+async function loadDailyPicks() {
+    const container = document.getElementById('dailyPicksContent');
+    const empty = document.getElementById('dailyPicksEmpty');
+    const dateLine = document.getElementById('dailyPicksDateLine');
+    if (!container || !empty || !dateLine) return;
+
+    container.innerHTML = '<div class="card text-center py-8"><div class="loading-spinner" style="width:28px;height:28px;"></div><p class="text-subtle text-sm">加载中...</p></div>';
+    empty.style.display = 'none';
+    dateLine.textContent = '--';
+
+    try {
+        const res = await apiCall('GET', `${API_BASE}/api/daily-picks`);
+        renderDailyPicks(normalizeDailyPicksPayload(res));
+    } catch (e) {
+        container.innerHTML = `<div class="card text-center py-8"><p class="text-subtle text-sm">加载今日推荐失败: ${escapeHtml(e.message)}</p></div>`;
+    }
+}
+
+async function runDailyPicks(strategy) {
+    const btn = document.getElementById(strategy === 'all' ? 'dailyPicksRunAllBtn' : `dailyRunBtn-${strategy}`);
+    const originalText = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '刷新中...';
+    }
+
+    try {
+        const res = await apiCall('POST', `${API_BASE}/api/daily-picks/run`, { strategy });
+        const payload = normalizeDailyPicksPayload(res);
+        if (payload && Array.isArray(payload.groups)) {
+            renderDailyPicks(payload);
+        } else {
+            await loadDailyPicks();
+        }
+        showToast('今日推荐已刷新', 'success');
+    } catch (e) {
+        showToast(e.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    }
+}
+
+function renderDailyPicks(data) {
+    const container = document.getElementById('dailyPicksContent');
+    const empty = document.getElementById('dailyPicksEmpty');
+    const dateLine = document.getElementById('dailyPicksDateLine');
+    if (!container || !empty || !dateLine) return;
+
+    const groups = Array.isArray(data && data.groups) ? data.groups : [];
+    const groupMap = new Map(groups.map(group => [group.strategy_key, group]));
+    const tradeDate = data && data.trade_date ? data.trade_date : '';
+    const latestDate = data && data.latest_trade_date ? data.latest_trade_date : '';
+    dateLine.textContent = `交易日 ${formatDailyDate(tradeDate)} · 最新交易日 ${formatDailyDate(latestDate)}`;
+
+    const totalRecommendations = groups.reduce((sum, group) => sum + (Array.isArray(group.recommendations) ? group.recommendations.length : 0), 0);
+    empty.style.display = totalRecommendations ? 'none' : 'block';
+
+    container.innerHTML = DAILY_PICK_STRATEGIES.map(strategy => {
+        const group = groupMap.get(strategy.key) || {};
+        const recommendations = Array.isArray(group.recommendations) ? group.recommendations : [];
+        const status = group.status || 'empty';
+        const runTime = group.run_finished_at || group.run_started_at || '';
+        const description = group.description || '';
+        const error = group.error || '';
+        return `
+            <section class="card fade-in">
+                <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-4">
+                    <div class="min-w-0">
+                        <div class="flex flex-wrap items-center gap-2 mb-2">
+                            <h3 class="text-base font-semibold break-words">${escapeHtml(group.strategy_name || strategy.name)}</h3>
+                            <span class="strategy-pill">${escapeHtml(status)}</span>
+                        </div>
+                        ${description ? `<p class="text-xs text-subtle leading-relaxed">${escapeHtml(description)}</p>` : ''}
+                        ${error ? `<p class="text-xs text-red-300 mt-2 break-words">错误：${escapeHtml(error)}</p>` : ''}
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-2 text-center lg:min-w-[420px]">
+                        <div class="bg-card-light rounded-lg px-2 py-2">
+                            <p class="text-[11px] text-subtle">生成</p>
+                            <p class="text-xs truncate">${runTime ? formatDailyTime(runTime) : '--'}</p>
+                        </div>
+                        <div class="bg-card-light rounded-lg px-2 py-2">
+                            <p class="text-[11px] text-subtle">扫描</p>
+                            <p class="text-xs font-mono">${formatDailyNumber(group.total_scanned)}</p>
+                        </div>
+                        <div class="bg-card-light rounded-lg px-2 py-2">
+                            <p class="text-[11px] text-subtle">入选</p>
+                            <p class="text-xs font-mono">${formatDailyNumber(group.total_picks ?? recommendations.length)}</p>
+                        </div>
+                        <button id="dailyRunBtn-${escapeHtml(strategy.key)}" onclick="runDailyPicks('${escapeHtml(strategy.key)}')" class="btn-ghost text-xs px-2 py-2 rounded-lg min-w-0">刷新</button>
+                    </div>
+                </div>
+                <div class="space-y-3">
+                    ${recommendations.length
+                        ? recommendations.map(renderRecommendationCard).join('')
+                        : '<div class="bg-card-light rounded-lg p-4 text-center"><p class="text-sm text-subtle">暂无推荐</p></div>'}
+                </div>
+            </section>
+        `;
+    }).join('');
+}
+
+// ===================== ROUTER INIT =====================
+function handleHashChange() {
+    const hash = window.location.hash || '#/login';
+    const pageMap = {
+        '#/login': 'login',
+        '#/register': 'register',
+        '#/analyze': 'analyze',
+        '#/daily-picks': 'daily-picks',
+        '#/watchlist': 'watchlist'
+    };
+    const page = pageMap[hash] || (state.token ? 'analyze' : 'login');
+    navigateToPage(page);
+}
+
+window.addEventListener('hashchange', handleHashChange);
+
+// ===================== INIT =====================
+async function init() {
+    // Check token
+    if (state.token) {
+        try {
+            await fetchUserInfo();
+            handleHashChange();
+            return;
+        } catch (e) {
+            // Token invalid, clear
+            state.token = null;
+            localStorage.removeItem('token');
+        }
+    }
+    // No token, show login
+    handleHashChange();
+}
+
+// ===================== WINDOW RESIZE HANDLER =====================
+let resizeTimer;
+window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+        Object.values(state.charts).forEach(c => { if (c) c.resize(); });
+    }, 200);
+});
+
+// ===================== DOCUMENT READY =====================
+document.addEventListener('DOMContentLoaded', init);
+</script>
+
+</body>
+</html>
