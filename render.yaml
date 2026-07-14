@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: a-stock-analyzer
+    runtime: python
+    plan: free
+    branch: codex/deploy-a-stock
+    rootDir: stock-analyzer
+    buildCommand: pip install -r requirements.render.txt
+    startCommand: uvicorn src.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /a-stock/healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      - key: STOCK_ANALYZER_DATABASE_URL
+        sync: false
+      - key: STOCK_ANALYZER_SECRET_KEY
+        generateValue: true

@@ -1,7 +1,7 @@
 """
 股票数据获取模块
-主数据源：新浪财经API（不受代理影响）
-备用数据源：AKShare（东方财富）
+主数据源：a-stock-data 直连适配层（mootdx/腾讯/百度/东财/同花顺）
+备用数据源：新浪财经API、AKShare（东方财富）
 带缓存策略
 """
 
@@ -19,16 +19,94 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 try:
-    from models import save_stock_cache, get_stock_cache
+    from models import save_stock_cache_many, get_stock_cache
+    import a_stock_data_provider as a_stock_data
 except ImportError:  # pragma: no cover - package execution fallback
-    from .models import save_stock_cache, get_stock_cache
+    from .models import save_stock_cache_many, get_stock_cache
+    from . import a_stock_data_provider as a_stock_data
 
 # 强制不走代理的请求Session
 def _direct_session():
     s = requests.Session()
+    s.trust_env = False
     s.proxies = {'http': '', 'https': ''}
     s.headers.update({'User-Agent': 'Mozilla/5.0', 'Referer': 'https://finance.sina.com.cn'})
     return s
+
+
+def _eastmoney_market_code(code: str) -> int:
+    return 1 if code.startswith("6") else 0
+
+
+def _eastmoney_secu_code(code: str) -> str:
+    if code.startswith("6"):
+        return f"SH{code}"
+    if code.startswith(("4", "8")):
+        return f"BJ{code}"
+    return f"SZ{code}"
+
+
+def _fetch_eastmoney_stock_profile(code: str, session: Optional[requests.Session] = None) -> dict:
+    """Fetch lightweight Eastmoney stock profile fields without going through AKShare."""
+    session = session or _direct_session()
+    try:
+        survey_resp = session.get(
+            "https://emweb.securities.eastmoney.com/PC_HSF10/CompanySurvey/PageAjax",
+            params={"code": _eastmoney_secu_code(code)},
+            timeout=5,
+        )
+        row = ((survey_resp.json().get("jbzl") or [{}])[0]) or {}
+        profile = {}
+        if row.get("SECURITY_NAME_ABBR"):
+            profile["name"] = row.get("SECURITY_NAME_ABBR")
+        industry_path = row.get("EM2016") or row.get("INDUSTRYCSRC1")
+        if industry_path:
+            industry = str(industry_path).split("-")[-1].strip()
+            if industry:
+                profile["industry"] = industry
+        if profile:
+            return profile
+    except Exception:
+        pass
+
+    fields = "f57,f58,f116,f117,f127,f162,f167"
+    params = {
+        "fltt": "2",
+        "invt": "2",
+        "fields": fields,
+        "secid": f"{_eastmoney_market_code(code)}.{code}",
+    }
+    url = "https://push2.eastmoney.com/api/qt/stock/get"
+    for _ in range(2):
+        try:
+            resp = session.get(url, params=params, timeout=5)
+            data = resp.json().get("data") or {}
+            if not data:
+                continue
+            profile = {}
+            if data.get("f58"):
+                profile["name"] = data.get("f58")
+            if data.get("f127") and data.get("f127") != "-":
+                profile["industry"] = data.get("f127")
+            try:
+                if data.get("f162") not in (None, "-"):
+                    profile["pe_ratio"] = float(data.get("f162"))
+            except (ValueError, TypeError):
+                pass
+            try:
+                if data.get("f167") not in (None, "-"):
+                    profile["pb_ratio"] = float(data.get("f167"))
+            except (ValueError, TypeError):
+                pass
+            try:
+                if data.get("f116") not in (None, "-"):
+                    profile["market_cap"] = round(float(data.get("f116")) / 100000000, 2)
+            except (ValueError, TypeError):
+                pass
+            return profile
+        except Exception:
+            continue
+    return {}
 
 
 def _normalize_code(code: str) -> str:
@@ -81,6 +159,23 @@ def classify_instrument(code: str, name: str = "") -> str:
     return "stock"
 
 
+def _is_recent_trading_cache(latest_date: datetime, now: Optional[datetime] = None) -> bool:
+    """Treat the latest weekday cache as fresh across weekends and the next morning."""
+    now = now or datetime.now()
+    if hasattr(latest_date, "to_pydatetime"):
+        latest_date = latest_date.to_pydatetime()
+    latest_day = latest_date.date()
+    current_day = now.date()
+    if latest_day >= current_day:
+        return True
+    cursor = current_day
+    while cursor > latest_day:
+        if cursor.weekday() < 5:
+            return False
+        cursor -= timedelta(days=1)
+    return True
+
+
 def get_stock_daily(code: str, days: int = 120) -> pd.DataFrame:
     """
     获取股票日K线数据（新浪API）
@@ -100,11 +195,40 @@ def get_stock_daily(code: str, days: int = 120) -> pd.DataFrame:
         df = pd.DataFrame(cache_data)
         df["date"] = pd.to_datetime(df["date"])
         latest_date = df["date"].max()
-        if (datetime.now() - latest_date).days <= 1 and len(df) >= days * 0.8:
+        if _is_recent_trading_cache(latest_date) and len(df) >= days * 0.8:
             df = df.sort_values("date").tail(days).reset_index(drop=True)
             return df
     
-    # ── 主数据源：新浪财经 ──
+    # ── 主数据源：a-stock-data 直连适配层 ──
+    first_error: Optional[Exception] = None
+    try:
+        df = a_stock_data.get_daily_bars(code, days=days)
+        if df is None or df.empty:
+            raise ValueError(f"股票 {code} 无数据")
+        for col in ["open", "high", "low", "close", "volume", "amount", "pct_change"]:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+        df["date"] = pd.to_datetime(df["date"])
+        if "amount" not in df.columns:
+            df["amount"] = df["close"] * df["volume"]
+        if "pct_change" not in df.columns:
+            df["pct_change"] = df["close"].pct_change() * 100
+        save_stock_cache_many(code, [
+            {
+                "date": row["date"].strftime("%Y-%m-%d"),
+                "open": float(row["open"]),
+                "high": float(row["high"]),
+                "low": float(row["low"]),
+                "close": float(row["close"]),
+                "volume": float(row["volume"]),
+            }
+            for _, row in df.dropna(subset=["date", "open", "high", "low", "close", "volume"]).iterrows()
+        ])
+        return df.sort_values("date").tail(days).reset_index(drop=True)
+    except Exception as e:
+        first_error = e
+
+    # ── 备用数据源：新浪财经 ──
     try:
         symbol = _sina_symbol(code)
         session = _direct_session()
@@ -150,14 +274,17 @@ def get_stock_daily(code: str, days: int = 120) -> pd.DataFrame:
         df['amount'] = df['close'] * df['volume']  # 近似成交额
         
         # 缓存到数据库
-        for _, row in df.iterrows():
-            save_stock_cache(code, row["date"].strftime("%Y-%m-%d"), {
+        save_stock_cache_many(code, [
+            {
+                "date": row["date"].strftime("%Y-%m-%d"),
                 "open": float(row["open"]),
                 "high": float(row["high"]),
                 "low": float(row["low"]),
                 "close": float(row["close"]),
                 "volume": float(row["volume"]),
-            })
+            }
+            for _, row in df.iterrows()
+        ])
         
         df = df.sort_values("date").tail(days).reset_index(drop=True)
         return df
@@ -186,7 +313,8 @@ def get_stock_daily(code: str, days: int = 120) -> pd.DataFrame:
             df = df.sort_values("date").tail(days).reset_index(drop=True)
             return df
         except Exception:
-            raise RuntimeError(f"所有数据源均失败，最后错误: {str(e)}")
+            prefix = f"a-stock-data失败: {str(first_error)[:120]}；" if first_error else ""
+            raise RuntimeError(f"所有数据源均失败，{prefix}最后错误: {str(e)}")
 
 
 def get_stock_info(code: str) -> dict:
@@ -198,11 +326,22 @@ def get_stock_info(code: str) -> dict:
     """
     code = _normalize_code(code)
     symbol = _sina_symbol(code)
-    session = _direct_session()
+    session: Optional[requests.Session] = None
     info = {"code": code, "name": code}
+
+    # ── 主数据源：a-stock-data 腾讯行情 + 东财资料 ──
+    try:
+        profile = a_stock_data.get_stock_profile(code)
+        if profile:
+            info.update({k: v for k, v in profile.items() if v not in (None, "", "-", "--")})
+    except Exception:
+        pass
     
     # ── 新浪实时行情 ──
     try:
+        if all(info.get(key) is not None for key in ["price", "open", "pre_close", "high", "low"]) and info.get("name") != code:
+            raise RuntimeError("a-stock-data quote already populated core realtime fields")
+        session = session or _direct_session()
         url = f"https://hq.sinajs.cn/list={symbol}"
         resp = session.get(url, timeout=10)
         # 格式: var hq_str_sh600519="贵州茅台,1335.150,..."
@@ -221,6 +360,9 @@ def get_stock_info(code: str) -> dict:
     
     # ── 腾讯行情获取PE/PB ──
     try:
+        if all(info.get(key) is not None for key in ["price", "pe_ratio", "pb_ratio", "market_cap"]):
+            raise RuntimeError("a-stock-data quote already populated valuation fields")
+        session = session or _direct_session()
         tencent_url = f"https://qt.gtimg.cn/q={symbol}"
         resp = session.get(tencent_url, timeout=10)
         text = resp.text
@@ -228,44 +370,67 @@ def get_stock_info(code: str) -> dict:
         data_str = text.split('"')[1]
         fields = data_str.split('~')
         if len(fields) > 50:
-            if info["name"] == code and fields[1]:
+            if info.get("name") == code and fields[1]:
                 info["name"] = fields[1]
-            info["open"] = float(fields[5]) if len(fields) > 5 and fields[5] else info.get("open")
-            info["price"] = float(fields[3]) if fields[3] else info.get("price")
-            info["pre_close"] = float(fields[4]) if fields[4] else info.get("pre_close")
-            info["high"] = float(fields[33]) if len(fields) > 33 and fields[33] else info.get("high")
-            info["low"] = float(fields[34]) if len(fields) > 34 and fields[34] else info.get("low")
-            info["high_limit"] = float(fields[47]) if len(fields) > 47 and fields[47] and fields[47] != "-1" else None
-            info["low_limit"] = float(fields[48]) if len(fields) > 48 and fields[48] and fields[48] != "-1" else None
+            info["open"] = info.get("open") if info.get("open") is not None else (float(fields[5]) if len(fields) > 5 and fields[5] else None)
+            info["price"] = info.get("price") if info.get("price") is not None else (float(fields[3]) if fields[3] else None)
+            info["pre_close"] = info.get("pre_close") if info.get("pre_close") is not None else (float(fields[4]) if fields[4] else None)
+            info["high"] = info.get("high") if info.get("high") is not None else (float(fields[33]) if len(fields) > 33 and fields[33] else None)
+            info["low"] = info.get("low") if info.get("low") is not None else (float(fields[34]) if len(fields) > 34 and fields[34] else None)
+            if info.get("high_limit") is None:
+                info["high_limit"] = float(fields[47]) if len(fields) > 47 and fields[47] and fields[47] != "-1" else None
+            if info.get("low_limit") is None:
+                info["low_limit"] = float(fields[48]) if len(fields) > 48 and fields[48] and fields[48] != "-1" else None
             
             # PE (动态市盈率)
             try:
                 pe = float(fields[39]) if fields[39] and fields[39] != '' else None
-                info["pe_ratio"] = pe
+                if info.get("pe_ratio") is None:
+                    info["pe_ratio"] = pe
             except (ValueError, IndexError):
-                info["pe_ratio"] = None
+                info.setdefault("pe_ratio", None)
             
             # 总市值 — 腾讯API fields[45] 返回的是亿元单位，转为元
             try:
                 market_cap = float(fields[45]) if fields[45] else None
                 if market_cap:
-                    info["market_cap"] = market_cap  # 腾讯API返回单位已是亿元，直接存储
+                    info.setdefault("market_cap", market_cap)  # 腾讯API返回单位已是亿元，直接存储
             except (ValueError, IndexError):
                 pass
             
             # PB (市净率)
             try:
-                info["pb_ratio"] = float(fields[46]) if fields[46] else None
+                if info.get("pb_ratio") is None:
+                    info["pb_ratio"] = float(fields[46]) if fields[46] else None
             except (ValueError, IndexError):
-                info["pb_ratio"] = None
+                info.setdefault("pb_ratio", None)
             
             # 行业（腾讯不直接提供，留空）
-            info["industry"] = fields[100] if len(fields) > 100 and fields[100] else "未知"
+            info["industry"] = info.get("industry") or (fields[100] if len(fields) > 100 and fields[100] else "未知")
     except Exception:
         pass
     
-    # 如果还是没拿到名字，尝试AKShare
-    if info["name"] == code:
+    # 如果还是没拿到名字或行业，尝试 AKShare/东方财富个股资料补全
+    current_industry = str(info.get("industry") or "").strip()
+    needs_ak_info = info["name"] == code or not current_industry or current_industry in {"未知", "--", "-"}
+    if needs_ak_info:
+        try:
+            session = session or _direct_session()
+            profile = _fetch_eastmoney_stock_profile(code, session)
+            if profile:
+                if info["name"] == code and profile.get("name"):
+                    info["name"] = profile["name"]
+                if profile.get("industry"):
+                    info["industry"] = profile["industry"]
+                for key in ("pe_ratio", "pb_ratio", "market_cap"):
+                    if info.get(key) is None and profile.get(key) is not None:
+                        info[key] = profile[key]
+        except Exception:
+            pass
+
+    current_industry = str(info.get("industry") or "").strip()
+    needs_ak_info = info["name"] == code or not current_industry or current_industry in {"未知", "--", "-"}
+    if needs_ak_info:
         try:
             import akshare as ak
             df = ak.stock_individual_info_em(symbol=code)
@@ -273,8 +438,11 @@ def get_stock_info(code: str) -> dict:
                 for _, row in df.iterrows():
                     item = row.get("item", "")
                     value = row.get("value", "")
+                    if value is None or str(value).strip() in {"", "--", "-"}:
+                        continue
                     if "股票简称" in item or "名称" in item:
-                        info["name"] = value
+                        if info["name"] == code:
+                            info["name"] = value
                     elif "行业" in item:
                         info["industry"] = value
                     elif "市盈率" in item and "动态" in item:
@@ -306,6 +474,20 @@ def get_stock_minute(code: str, period: str = "1") -> tuple[pd.DataFrame, Option
     获取股票分钟K线。失败不抛出给业务层，返回 (空DataFrame, 错误信息) 供分析降级。
     """
     try:
+        df = a_stock_data.get_minute_bars(code, period=period)
+        if df is not None and not df.empty:
+            for col in ["open", "high", "low", "close", "volume", "amount"]:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors="coerce")
+            if "datetime" in df.columns:
+                df["datetime"] = pd.to_datetime(df["datetime"], errors="coerce")
+            return df.reset_index(drop=True), None
+    except Exception as first_error:
+        first_error_text = str(first_error)[:120]
+    else:
+        first_error_text = "a-stock-data分钟数据为空"
+
+    try:
         import akshare as ak
         symbol = _ak_symbol(code)
         df = ak.stock_zh_a_minute(symbol=symbol, period=period, adjust="")
@@ -330,4 +512,4 @@ def get_stock_minute(code: str, period: str = "1") -> tuple[pd.DataFrame, Option
                 df = df[df["datetime"].dt.date == latest_day]
         return df.reset_index(drop=True), None
     except Exception as e:
-        return pd.DataFrame(), str(e)[:160]
+        return pd.DataFrame(), f"a-stock-data: {first_error_text}; AKShare: {str(e)[:120]}"[:160]

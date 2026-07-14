@@ -76,6 +76,28 @@ CREATE TABLE IF NOT EXISTS analysis_history (
     total_score REAL,
     recommendation TEXT,
     analysis_text TEXT,
+    buy_date TEXT,
+    cost_price REAL,
+    strategy_exit_json TEXT,
+    -- 板块热度
+    sector_name TEXT,
+    sector_type TEXT,
+    sector_rank INTEGER,
+    sector_score REAL,
+    sector_heat REAL,
+    sector_change_pct REAL,
+    sector_heat_window TEXT,
+    sector_heat_date TEXT,
+    sector_source TEXT,
+    sector_confidence REAL,
+    sector_context_json TEXT,
+    -- 自选股流量摘要
+    retail_direction TEXT,
+    retail_score REAL,
+    flow_recommendation TEXT,
+    exit_risk_score REAL,
+    strategy_risk_level TEXT,
+    strategy_risk_score REAL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -86,6 +108,7 @@ CREATE TABLE IF NOT EXISTS watchlist (
     stock_code TEXT NOT NULL,
     stock_name TEXT,
     added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    pinned_at TIMESTAMP,
     UNIQUE(user_id, stock_code)
 );
 
@@ -117,7 +140,45 @@ CREATE TABLE IF NOT EXISTS strategy_recommendations (
     risks_json TEXT,
     metrics_json TEXT,
     data_status_json TEXT,
+    -- 板块热度
+    sector_name TEXT,
+    sector_type TEXT,
+    sector_rank INTEGER,
+    sector_score REAL,
+    sector_heat REAL,
+    sector_change_pct REAL,
+    sector_heat_window TEXT,
+    sector_heat_date TEXT,
+    sector_source TEXT,
+    sector_confidence REAL,
+    sector_context_json TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 每日资金/散户热度快照
+CREATE TABLE IF NOT EXISTS attention_heat_snapshots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    snapshot_date TEXT,
+    snapshot_ts REAL,
+    snapshot_json TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 用户量化策略库
+CREATE TABLE IF NOT EXISTS user_quant_strategies (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    platform TEXT DEFAULT 'python_joinquant',
+    source_code TEXT NOT NULL,
+    source_hash TEXT NOT NULL,
+    parse_status TEXT NOT NULL DEFAULT 'pending',
+    parse_result_json TEXT,
+    ai_status TEXT NOT NULL DEFAULT 'disabled',
+    ai_analysis_json TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_analyzed_at TIMESTAMP
 );
 
 -- 索引
@@ -131,3 +192,5 @@ CREATE INDEX IF NOT EXISTS idx_watchlist_user ON watchlist(user_id);
 CREATE INDEX IF NOT EXISTS idx_strategy_runs_date ON strategy_runs(trade_date);
 CREATE INDEX IF NOT EXISTS idx_strategy_runs_key_date ON strategy_runs(strategy_key, trade_date);
 CREATE INDEX IF NOT EXISTS idx_strategy_recommendations_run ON strategy_recommendations(run_id);
+CREATE INDEX IF NOT EXISTS idx_attention_heat_snapshots_date ON attention_heat_snapshots(snapshot_date);
+CREATE INDEX IF NOT EXISTS idx_user_quant_strategies_user ON user_quant_strategies(user_id);

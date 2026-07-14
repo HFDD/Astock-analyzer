@@ -10,7 +10,8 @@ from typing import Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
+from starlette.concurrency import run_in_threadpool
 
 try:
     from models import (
@@ -28,21 +29,38 @@ except ImportError:  # pragma: no cover - package execution fallback
 SECRET_KEY = os.getenv("STOCK_ANALYZER_SECRET_KEY", "stock-analyzer-dev-secret-2026")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 7
+BCRYPT_MAX_PASSWORD_BYTES = 72
+
+if not hasattr(bcrypt, "__about__"):
+    class _BcryptAbout:
+        __version__ = getattr(bcrypt, "__version__", "unknown")
+
+    bcrypt.__about__ = _BcryptAbout()
 
 # ─── 密码hash ─────────────────────────────────────────────
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer(auto_error=False)
 
 
 def hash_password(password: str) -> str:
     """对密码进行bcrypt hash"""
-    return pwd_context.hash(password)
+    password_bytes = password.encode("utf-8")
+    return bcrypt.hashpw(password_bytes, bcrypt.gensalt()).decode("utf-8")
+
+
+def password_byte_length(password: str) -> int:
+    """Return password length in UTF-8 bytes, matching bcrypt's 72-byte limit."""
+    return len((password or "").encode("utf-8"))
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """验证密码"""
-    return pwd_context.verify(plain_password, hashed_password)
+    if password_byte_length(plain_password) > BCRYPT_MAX_PASSWORD_BYTES:
+        return False
+    try:
+        return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+    except ValueError:
+        return False
 
 
 # ─── JWT Token ────────────────────────────────────────────
@@ -90,6 +108,8 @@ def register_user(username: str, email: str, password: str) -> dict:
         raise ValueError("邮箱格式不正确")
     if not password or len(password) < 6:
         raise ValueError("密码至少6个字符")
+    if password_byte_length(password) > BCRYPT_MAX_PASSWORD_BYTES:
+        raise ValueError("密码不能超过72字节，请缩短后重试")
     
     # 检查用户名是否已存在
     if get_user_by_username(username):
@@ -167,7 +187,7 @@ async def get_current_user(
         )
     
     user_id = int(payload.get("sub", 0))
-    user = get_user_by_id(user_id)
+    user = await run_in_threadpool(get_user_by_id, user_id)
     
     if not user:
         raise HTTPException(

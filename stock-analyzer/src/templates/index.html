@@ -9,35 +9,38 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            background: #1a1a2e;
+            background:
+                radial-gradient(circle at 18% 0%, rgba(245,158,11,0.10), transparent 28%),
+                radial-gradient(circle at 90% 12%, rgba(56,189,248,0.10), transparent 24%),
+                #0b1020;
             color: #e2e8f0;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
             min-height: 100vh;
         }
-        .bg-theme { background: #1a1a2e; }
-        .bg-card { background: #16213e; }
-        .bg-card-light { background: #1a2754; }
-        .bg-accent { background: #0f3460; }
-        .bg-accent-hover { background: #164a80; }
-        .border-theme { border-color: #1e3a5f; }
-        .text-accent { color: #4a9eff; }
-        .text-subtle { color: #8ba4b8; }
+        .bg-theme { background: #0b1020; }
+        .bg-card { background: #111827; }
+        .bg-card-light { background: #151f34; }
+        .bg-accent { background: #17324a; }
+        .bg-accent-hover { background: #1d4b68; }
+        .border-theme { border-color: #23314d; }
+        .text-accent { color: #f59e0b; }
+        .text-subtle { color: #94a3b8; }
         .score-green { color: #22c55e; }
         .score-yellow { color: #eab308; }
         .score-red { color: #ef4444; }
         .btn-primary {
-            background: linear-gradient(135deg, #0f3460, #164a80);
+            background: linear-gradient(135deg, #f97316, #d97706);
             color: white;
             transition: all 0.2s;
         }
-        .btn-primary:hover { background: linear-gradient(135deg, #164a80, #1d5ea0); transform: translateY(-1px); box-shadow: 0 4px 15px rgba(15,52,96,0.4); }
+        .btn-primary:hover { background: linear-gradient(135deg, #fb923c, #f59e0b); transform: translateY(-1px); box-shadow: 0 8px 22px rgba(249,115,22,0.22); }
         .btn-danger { background: #dc2626; color: white; }
         .btn-danger:hover { background: #b91c1c; }
         .btn-ghost { background: transparent; border: 1px solid #1e3a5f; color: #8ba4b8; }
         .btn-ghost:hover { border-color: #4a9eff; color: #4a9eff; }
         input, select {
-            background: #1a2754;
-            border: 1px solid #1e3a5f;
+            background: #111827;
+            border: 1px solid #263654;
             color: #e2e8f0;
             border-radius: 8px;
             padding: 10px 14px;
@@ -45,13 +48,13 @@
             outline: none;
             transition: border-color 0.2s;
         }
-        input:focus, select:focus { border-color: #4a9eff; box-shadow: 0 0 0 3px rgba(74,158,255,0.15); }
+        input:focus, select:focus { border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,0.14); }
         input::placeholder { color: #5a7a94; }
         .card {
-            background: #16213e;
+            background: rgba(17,24,39,0.88);
             border-radius: 12px;
             padding: 20px;
-            border: 1px solid #1e3a5f;
+            border: 1px solid rgba(51,65,85,0.8);
         }
         .page { display: none; }
         .page.active { display: block; }
@@ -64,11 +67,147 @@
         .strategy-risk-low { border-color: rgba(34,197,94,0.45); background: linear-gradient(135deg, rgba(22,33,62,0.98), rgba(20,83,45,0.36)); }
         .strategy-risk-medium { border-color: rgba(234,179,8,0.45); background: linear-gradient(135deg, rgba(22,33,62,0.98), rgba(113,63,18,0.36)); }
         .strategy-risk-high { border-color: rgba(239,68,68,0.55); background: linear-gradient(135deg, rgba(22,33,62,0.98), rgba(127,29,29,0.38)); }
-        .strategy-pill { border: 1px solid #1e3a5f; background: rgba(26,39,84,0.74); border-radius: 999px; padding: 2px 8px; font-size: 11px; white-space: nowrap; }
+        .strategy-pill { border: 1px solid rgba(71,85,105,0.8); background: rgba(15,23,42,0.68); border-radius: 999px; padding: 2px 8px; font-size: 11px; white-space: nowrap; }
+        .sector-pill { display: inline-flex; align-items: center; max-width: 100%; min-width: 0; border: 1px solid rgba(56,189,248,0.30); background: rgba(14,116,144,0.16); border-radius: 999px; padding: 3px 9px; font-size: 11px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .heat-pill { border-color: rgba(245,158,11,0.42); background: rgba(120,53,15,0.28); color: #fbbf24; }
+        .retail-pill { border-color: rgba(34,197,94,0.34); background: rgba(20,83,45,0.24); color: #86efac; }
+        .risk-pill { border-color: rgba(248,113,113,0.48); background: rgba(127,29,29,0.24); color: #fca5a5; }
+        .muted-pill { border-color: rgba(148,163,184,0.28); background: rgba(51,65,85,0.28); color: #94a3b8; }
         .strategy-card { border: 1px solid #1e3a5f; background: rgba(26,39,84,0.72); border-radius: 10px; padding: 14px; }
+        .strategy-card-hit { border-color: rgba(248,113,113,0.9); box-shadow: 0 0 0 1px rgba(248,113,113,0.35), 0 14px 30px rgba(127,29,29,0.22); }
         .strategy-card-high { border-color: rgba(239,68,68,0.55); }
         .strategy-card-medium { border-color: rgba(234,179,8,0.5); }
         .strategy-card-low { border-color: rgba(34,197,94,0.45); }
+        .risk-control-hit { border-color: rgba(248,113,113,0.95); background: linear-gradient(135deg, rgba(127,29,29,0.36), rgba(26,39,84,0.78)); box-shadow: inset 4px 0 0 rgba(248,113,113,0.95); }
+        .risk-control-muted { opacity: 0.72; }
+        .risk-badge-hit { background: rgba(220,38,38,0.95); border-color: rgba(252,165,165,0.7); color: #fff; font-weight: 700; }
+        .risk-badge-soft { background: rgba(26,39,84,0.74); }
+        .signal-hit-line { border-color: rgba(248,113,113,0.75); background: rgba(127,29,29,0.18); }
+        .action-reference-card { border-color: rgba(74,158,255,0.32); background: linear-gradient(135deg, rgba(22,33,62,0.96), rgba(15,52,96,0.24)); }
+        .flow-card-v2 { border-color: rgba(245,158,11,0.36); background: linear-gradient(135deg, rgba(17,24,39,0.98), rgba(120,53,15,0.18)); }
+        .flow-panel { border: 1px solid rgba(51,65,85,0.92); background: rgba(15,23,42,0.58); border-radius: 10px; padding: 14px; min-width: 0; }
+        .flow-panel-strong { border-color: rgba(245,158,11,0.48); background: linear-gradient(135deg, rgba(120,53,15,0.30), rgba(15,23,42,0.72)); }
+        .flow-metric-label { font-size: 11px; color: #8ba4b8; line-height: 1.35; }
+        .flow-metric-value { font-size: 20px; font-weight: 800; line-height: 1.15; overflow-wrap: anywhere; }
+        .flow-status-pill { display: inline-flex; align-items: center; max-width: 100%; border: 1px solid rgba(245,158,11,0.36); background: rgba(120,53,15,0.20); border-radius: 999px; padding: 3px 9px; font-size: 11px; line-height: 1.35; overflow-wrap: anywhere; }
+        .flow-help-wrap { position: relative; display: inline-flex; align-items: center; }
+        .flow-help-dot { width: 17px; height: 17px; border-radius: 999px; border: 1px solid rgba(96,165,250,0.65); background: rgba(37,99,235,0.18); color: #bfdbfe; font-size: 11px; line-height: 15px; text-align: center; cursor: help; }
+        .flow-help-tooltip { position: absolute; left: 0; top: 24px; z-index: 30; width: min(280px, calc(100vw - 48px)); border: 1px solid rgba(96,165,250,0.45); background: rgba(2,6,23,0.96); color: #cbd5e1; border-radius: 10px; padding: 10px 12px; font-size: 11px; line-height: 1.65; white-space: pre-line; box-shadow: 0 18px 40px rgba(0,0,0,0.34); opacity: 0; pointer-events: none; transform: translateY(-4px); transition: opacity .15s ease, transform .15s ease; }
+        .flow-help-wrap:hover .flow-help-tooltip,
+        .flow-help-wrap:focus-within .flow-help-tooltip,
+        .flow-help-wrap.flow-help-open .flow-help-tooltip { opacity: 1; transform: translateY(0); pointer-events: auto; }
+        .flow-link-pill { display: inline-flex; align-items: center; max-width: 100%; border: 1px solid rgba(96,165,250,0.52); background: rgba(37,99,235,0.18); color: #bfdbfe; border-radius: 999px; padding: 4px 10px; font-size: 11px; line-height: 1.35; text-decoration: none; overflow-wrap: anywhere; transition: border-color .15s ease, background .15s ease, color .15s ease; }
+        .flow-link-pill:hover { border-color: rgba(147,197,253,0.9); background: rgba(37,99,235,0.32); color: #ffffff; }
+        .flow-risk-high { border-color: rgba(248,113,113,0.82); background: rgba(127,29,29,0.22); color: #fecaca; }
+        .flow-risk-mid { border-color: rgba(234,179,8,0.56); background: rgba(113,63,18,0.24); color: #fde68a; }
+        .flow-risk-low { border-color: rgba(34,197,94,0.48); background: rgba(20,83,45,0.22); color: #bbf7d0; }
+        .flow-source-list { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+        .flow-keyword-toggle { cursor: pointer; color: #bfdbfe; border-color: rgba(96,165,250,0.60); background: rgba(37,99,235,0.18); }
+        .flow-keyword-toggle:hover { color: #ffffff; border-color: rgba(147,197,253,0.90); background: rgba(37,99,235,0.32); }
+        .flow-keyword-panel { width: 100%; border: 1px solid rgba(96,165,250,0.34); background: rgba(15,23,42,0.58); border-radius: 10px; padding: 10px; margin-top: 2px; }
+        .flow-keyword-chip { display: inline-flex; align-items: center; max-width: 100%; border: 1px solid rgba(245,158,11,0.36); background: rgba(120,53,15,0.20); color: #fde68a; border-radius: 999px; padding: 4px 9px; font-size: 11px; line-height: 1.35; overflow-wrap: anywhere; }
+        .flow-keyword-meta { color: #94a3b8; font-size: 10px; margin-left: 4px; }
+        .flow-trend-visual { border: 1px solid rgba(74,158,255,0.22); background: rgba(15,23,42,0.22); border-radius: 8px; padding: 10px; }
+        .flow-trend-rail { position: relative; height: 8px; border-radius: 999px; background: linear-gradient(90deg, rgba(239,68,68,0.55), rgba(234,179,8,0.58), rgba(34,197,94,0.6)); overflow: hidden; }
+        .flow-trend-range { position: absolute; top: 0; bottom: 0; border-radius: 999px; background: rgba(255,255,255,0.36); box-shadow: 0 0 12px rgba(96,165,250,0.32); }
+        .flow-trend-marker { position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 999px; border: 2px solid #bfdbfe; background: #0f172a; transform: translate(-50%, -50%); box-shadow: 0 0 0 3px rgba(96,165,250,0.18); }
+        .flow-sparkline { width: 100%; height: 34px; display: block; overflow: visible; }
+        .flow-sparkline path { fill: none; stroke: #60a5fa; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+        .flow-sparkline circle { fill: #bfdbfe; stroke: #1d4ed8; stroke-width: 1.5; }
+        .flow-aux-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+        .search-console { padding: 14px; background: rgba(17,24,39,0.72); border-color: rgba(51,65,85,0.72); }
+        .analysis-shell { display: grid; gap: 16px; }
+        .analysis-shell > .mb-6 { margin-bottom: 0; }
+        .dashboard-hero {
+            position: relative;
+            overflow: hidden;
+            border-color: rgba(245,158,11,0.50);
+            background:
+                linear-gradient(135deg, rgba(120,53,15,0.38), rgba(15,23,42,0.94) 45%, rgba(8,47,73,0.38)),
+                #111827;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.22);
+        }
+        .dashboard-hero::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: linear-gradient(90deg, rgba(245,158,11,0.18), transparent 32%, rgba(56,189,248,0.10));
+            opacity: 0.85;
+        }
+        .dashboard-hero > * { position: relative; }
+        .hero-kicker { font-size: 11px; color: #fbbf24; letter-spacing: 0; font-weight: 700; }
+        .hero-title { font-size: clamp(22px, 4.5vw, 34px); line-height: 1.05; font-weight: 850; letter-spacing: 0; overflow-wrap: anywhere; }
+        .hero-verdict { border: 1px solid rgba(245,158,11,0.45); background: rgba(120,53,15,0.24); color: #fed7aa; border-radius: 10px; padding: 10px 12px; }
+        .hero-stat { border: 1px solid rgba(71,85,105,0.74); background: rgba(15,23,42,0.56); border-radius: 10px; padding: 12px; min-width: 0; }
+        .hero-stat-hot { border-color: rgba(245,158,11,0.50); background: rgba(120,53,15,0.22); }
+        .hero-stat-capital { border-color: rgba(34,197,94,0.42); background: rgba(20,83,45,0.18); }
+        .hero-stat-risk { border-color: rgba(248,113,113,0.42); background: rgba(127,29,29,0.16); }
+        .hero-stat-label { font-size: 11px; color: #94a3b8; line-height: 1.3; }
+        .hero-stat-value { font-size: 22px; line-height: 1.05; font-weight: 850; margin-top: 6px; overflow-wrap: anywhere; }
+        .hero-summary { border-left: 3px solid #f59e0b; background: rgba(15,23,42,0.46); border-radius: 8px; padding: 10px 12px; color: #cbd5e1; }
+        .decision-trigger { border: 1px solid rgba(245,158,11,0.34); background: rgba(2,6,23,0.34); border-radius: 10px; padding: 12px 14px; }
+        .research-details { border: 1px solid rgba(71,85,105,0.74); background: rgba(15,23,42,0.48); border-radius: 12px; overflow: hidden; }
+        .research-details > summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 15px 18px; cursor: pointer; color: #e2e8f0; font-size: 13px; font-weight: 750; list-style: none; }
+        .research-details > summary::-webkit-details-marker { display: none; }
+        .research-details > summary::after { content: "展开"; flex: 0 0 auto; color: #fbbf24; font-size: 11px; font-weight: 700; }
+        .research-details[open] > summary::after { content: "收起"; }
+        .research-details[open] > summary { border-bottom: 1px solid rgba(71,85,105,0.60); }
+        .research-details-content { display: grid; gap: 18px; padding: 18px; }
+        .compact-info-card { padding: 14px; background: rgba(15,23,42,0.50); }
+        .section-divider-label { font-size: 11px; font-weight: 750; color: #fbbf24; text-transform: none; }
+        .technical-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+        @media (min-width: 1024px) { .technical-grid { grid-template-columns: minmax(0,1fr) minmax(0,1fr); } }
+        .daily-heat-card { overflow: hidden; border-color: rgba(245,158,11,0.38); background: linear-gradient(135deg, rgba(120,53,15,0.26), rgba(15,23,42,0.88) 48%, rgba(8,47,73,0.24)); }
+        .daily-heat-list { display: grid; grid-template-columns: 1fr; gap: 12px; min-width: 0; }
+        @media (min-width: 1024px) { .daily-heat-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        .daily-heat-item { border: 1px solid rgba(71,85,105,0.78); background: rgba(15,23,42,0.58); border-radius: 10px; padding: 12px; min-width: 0; overflow: hidden; }
+        .daily-heat-item-top { border-color: rgba(245,158,11,0.55); background: linear-gradient(135deg, rgba(120,53,15,0.26), rgba(15,23,42,0.66)); }
+        .daily-heat-topic-title { min-width: 0; overflow-wrap: anywhere; }
+        .daily-heat-score { font-size: 24px; line-height: 1; font-weight: 850; color: #fbbf24; overflow-wrap: anywhere; }
+        .daily-heat-rank { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; min-width: 26px; height: 22px; border-radius: 999px; background: rgba(245,158,11,0.18); border: 1px solid rgba(245,158,11,0.42); color: #fed7aa; font-size: 11px; font-weight: 700; }
+        .daily-heat-signal { display: inline-flex; align-items: center; max-width: 100%; border: 1px solid rgba(148,163,184,0.34); background: rgba(15,23,42,0.52); border-radius: 999px; padding: 3px 9px; color: #cbd5e1; font-size: 11px; line-height: 1.35; overflow-wrap: anywhere; }
+        .daily-heat-signal-strong { border-color: rgba(34,197,94,0.54); background: rgba(20,83,45,0.24); color: #bbf7d0; }
+        .daily-heat-signal-warming { border-color: rgba(56,189,248,0.50); background: rgba(8,47,73,0.30); color: #bae6fd; }
+        .daily-heat-signal-diverge { border-color: rgba(234,179,8,0.56); background: rgba(113,63,18,0.26); color: #fde68a; }
+        .daily-heat-signal-weak { border-color: rgba(248,113,113,0.62); background: rgba(127,29,29,0.24); color: #fecaca; }
+        .daily-heat-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; min-width: 0; }
+        .daily-heat-metric { border: 1px solid rgba(51,65,85,0.80); background: rgba(15,23,42,0.58); border-radius: 8px; padding: 9px 10px; min-width: 0; }
+        .daily-heat-metric-label { font-size: 11px; color: #94a3b8; line-height: 1.25; }
+        .daily-heat-metric-value { margin-top: 4px; font-size: 16px; line-height: 1.15; font-weight: 800; color: #e2e8f0; overflow-wrap: anywhere; }
+        .daily-heat-metric-note { margin-top: 4px; font-size: 10px; line-height: 1.3; color: #94a3b8; overflow-wrap: anywhere; }
+        .daily-source-badge { display: inline-flex; align-items: center; max-width: 100%; border: 1px solid rgba(71,85,105,0.78); background: rgba(15,23,42,0.56); border-radius: 999px; padding: 4px 9px; color: #cbd5e1; font-size: 11px; line-height: 1.35; overflow-wrap: anywhere; }
+        .daily-source-badge-ok { border-color: rgba(34,197,94,0.46); background: rgba(20,83,45,0.20); color: #bbf7d0; }
+        .daily-source-badge-warn { border-color: rgba(234,179,8,0.48); background: rgba(113,63,18,0.22); color: #fde68a; }
+        .daily-source-badge-off { border-color: rgba(100,116,139,0.46); background: rgba(30,41,59,0.36); color: #94a3b8; }
+        .daily-heat-leaders { border-top: 1px solid rgba(51,65,85,0.70); padding-top: 10px; }
+        .daily-heat-leader-row { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.75fr); gap: 10px; padding: 9px 0; border-top: 1px solid rgba(51,65,85,0.46); min-width: 0; }
+        .daily-heat-leader-row:first-child { border-top: 0; padding-top: 0; }
+        .daily-leader-label { display: inline-flex; align-items: center; justify-content: center; min-width: 34px; height: 20px; border-radius: 999px; background: rgba(245,158,11,0.18); border: 1px solid rgba(245,158,11,0.42); color: #fed7aa; font-size: 11px; font-weight: 700; }
+        .daily-heat-etfs { border-top: 1px solid rgba(51,65,85,0.70); padding-top: 10px; }
+        .daily-heat-etf-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; min-width: 0; }
+        .daily-heat-etf { border: 1px solid rgba(56,189,248,0.42); background: rgba(8,47,73,0.24); border-radius: 8px; padding: 9px 10px; min-width: 0; cursor: pointer; transition: border-color .16s ease, background .16s ease; }
+        .daily-heat-etf:hover { border-color: rgba(125,211,252,0.76); background: rgba(8,47,73,0.40); }
+        .daily-heat-etf-code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; color: #bfdbfe; font-size: 11px; font-weight: 750; }
+        .daily-heat-etf-name { margin-top: 2px; color: #e0f2fe; font-size: 12px; font-weight: 750; line-height: 1.25; overflow-wrap: anywhere; }
+        .daily-heat-etf-meta { margin-top: 5px; color: #94a3b8; font-size: 10px; line-height: 1.35; overflow-wrap: anywhere; }
+        .morning-note-card { border-color: rgba(56,189,248,0.34); background: linear-gradient(135deg, rgba(8,47,73,0.22), rgba(15,23,42,0.88)); overflow: hidden; }
+        .morning-note-top-call { border-left: 3px solid #38bdf8; background: rgba(8,47,73,0.26); border-radius: 8px; padding: 10px 12px; color: #e0f2fe; line-height: 1.65; overflow-wrap: anywhere; }
+        .morning-note-risk { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+        .morning-note-risk span { border: 1px solid rgba(234,179,8,0.42); background: rgba(113,63,18,0.18); color: #fde68a; border-radius: 999px; padding: 4px 9px; font-size: 11px; line-height: 1.35; overflow-wrap: anywhere; }
+        .morning-note-markdown { max-height: 360px; overflow: auto; border: 1px solid rgba(51,65,85,0.82); background: rgba(2,6,23,0.38); border-radius: 8px; padding: 12px; color: #cbd5e1; font-size: 12px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .daily-heat-links { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+        .daily-heat-link { display: inline-flex; align-items: center; max-width: 100%; border: 1px solid rgba(96,165,250,0.46); background: rgba(37,99,235,0.16); color: #bfdbfe; border-radius: 999px; padding: 3px 8px; font-size: 11px; line-height: 1.35; text-decoration: none; overflow-wrap: anywhere; }
+        .daily-heat-link:hover { border-color: rgba(147,197,253,0.86); background: rgba(37,99,235,0.30); color: #ffffff; }
+        .daily-heat-flag { display: inline-flex; max-width: 100%; border: 1px solid rgba(234,179,8,0.42); background: rgba(113,63,18,0.18); border-radius: 999px; padding: 3px 8px; color: #fde68a; font-size: 11px; line-height: 1.35; overflow-wrap: anywhere; }
+        @media (max-width: 599px) {
+            .daily-heat-card { padding: 14px; }
+            .daily-heat-list { gap: 10px; }
+            .daily-heat-item { padding: 11px; }
+            .daily-heat-metrics { grid-template-columns: 1fr; }
+            .daily-heat-leader-row { grid-template-columns: 1fr; gap: 6px; }
+            .daily-heat-etf-grid { grid-template-columns: 1fr; }
+        }
         select:disabled { color: #5a7a94; opacity: 0.8; cursor: not-allowed; }
         .loading-spinner {
             width: 40px; height: 40px;
@@ -191,6 +330,7 @@
                 <div class="hidden sm:flex items-center gap-1">
                     <a href="#/analyze" class="nav-link px-3 py-1.5 text-sm rounded-lg nav-anal" onclick="switchPage(event,'analyze')">分析</a>
                     <a href="#/daily-picks" class="nav-link px-3 py-1.5 text-sm rounded-lg nav-daily" onclick="switchPage(event,'daily-picks')">今日推荐</a>
+                    <a href="#/quant-strategies" class="nav-link px-3 py-1.5 text-sm rounded-lg nav-quant" onclick="switchPage(event,'quant-strategies')">量化策略</a>
                     <a href="#/watchlist" class="nav-link px-3 py-1.5 text-sm rounded-lg nav-watch" onclick="switchPage(event,'watchlist')">自选股</a>
                 </div>
                 <div class="flex items-center gap-3">
@@ -203,6 +343,7 @@
             <div class="sm:hidden flex justify-around py-1.5 border-t border-theme -mx-4 px-4">
                 <a href="#/analyze" class="nav-link text-xs px-3 py-1.5 rounded-lg nav-anal" onclick="switchPage(event,'analyze')">🔍 分析</a>
                 <a href="#/daily-picks" class="nav-link text-xs px-2 py-1.5 rounded-lg nav-daily" onclick="switchPage(event,'daily-picks')">📌 今日推荐</a>
+                <a href="#/quant-strategies" class="nav-link text-xs px-2 py-1.5 rounded-lg nav-quant" onclick="switchPage(event,'quant-strategies')">🧮 量化</a>
                 <a href="#/watchlist" class="nav-link text-xs px-3 py-1.5 rounded-lg nav-watch" onclick="switchPage(event,'watchlist')">⭐ 自选股</a>
             </div>
         </div>
@@ -212,7 +353,7 @@
     <div id="page-analyze" class="page">
         <div class="max-w-6xl mx-auto px-4 py-6">
             <!-- Search Bar -->
-            <div class="card mb-6 fade-in">
+            <div class="card search-console mb-5 fade-in">
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_270px_180px_auto] gap-3 items-end">
                     <div>
                         <label class="block text-xs text-subtle mb-1.5">股票代码</label>
@@ -243,7 +384,7 @@
                         🔍 开始分析
                     </button>
                 </div>
-                <div id="analyzeHint" class="text-xs text-subtle mt-3 flex items-center gap-4">
+                <div id="analyzeHint" class="text-xs text-subtle mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
                     <span>💡 输入6位股票代码</span>
                     <span>📅 选择买入交易日可生成交易资格与卖点预案</span>
                     <span>🎯 填成本价可启用量化持仓卖点</span>
@@ -252,68 +393,250 @@
             </div>
 
             <!-- Analysis Results -->
-            <div id="analysisResult" style="display:none;">
-                <!-- Stock Basic Info + Score -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                    <!-- Stock Info Card -->
-                    <div class="card fade-in">
-                        <div class="flex items-start justify-between">
+            <div id="analysisResult" class="analysis-shell" style="display:none;">
+                <!-- 题材流量驾驶舱 -->
+                <div id="themeDashboardCard" class="card dashboard-hero fade-in">
+                    <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
+                        <div class="min-w-0">
+                            <p class="hero-kicker mb-2">个股决策摘要</p>
+                            <div class="flex flex-wrap items-end gap-x-3 gap-y-1">
+                                <h2 class="hero-title" id="stockName">--</h2>
+                                <span id="stockCode" class="text-sm text-subtle font-mono mb-1">--</span>
+                            </div>
+                            <div id="stockSectorTags" class="mt-3 flex flex-wrap gap-2 min-w-0"></div>
+                            <p id="dashboardOneLine" class="hero-summary text-sm leading-relaxed mt-4">结论由趋势、资金热度与策略风控共同形成。</p>
+                        </div>
+                        <div class="hero-verdict min-w-[210px]">
+                            <p class="text-[11px] text-subtle">唯一结论</p>
+                            <p id="dashboardVerdict" class="text-2xl font-extrabold mt-1">--</p>
+                            <p id="dashboardRiskLine" class="text-xs text-subtle mt-2 leading-relaxed">--</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5">
+                        <div class="hero-stat hero-stat-hot">
+                            <p class="hero-stat-label">趋势依据</p>
+                            <p id="dashboardTrendEvidence" class="hero-stat-value text-orange-300">--</p>
+                            <p id="dashboardTrendNote" class="text-[11px] text-subtle mt-2">--</p>
+                        </div>
+                        <div class="hero-stat hero-stat-capital">
+                            <p class="hero-stat-label">资金与热度</p>
+                            <p id="dashboardFlowEvidence" class="hero-stat-value text-green-300">--</p>
+                            <p id="dashboardFlowNote" class="text-[11px] text-subtle mt-2">--</p>
+                        </div>
+                        <div class="hero-stat hero-stat-risk">
+                            <p class="hero-stat-label">风险依据</p>
+                            <p id="dashboardRiskEvidence" class="hero-stat-value text-sky-200">--</p>
+                            <p id="dashboardRiskNote" class="text-[11px] text-subtle mt-2">--</p>
+                        </div>
+                    </div>
+                    <div class="decision-trigger mt-3">
+                        <p class="hero-stat-label">关键转变条件</p>
+                        <p id="dashboardKeyTrigger" class="text-sm leading-relaxed mt-1 text-slate-200">--</p>
+                    </div>
+                </div>
+
+                <details id="researchDetails" class="research-details fade-in">
+                    <summary>
+                        <span>展开研究详情</span>
+                        <span class="text-[11px] text-subtle font-normal">评分、流量模型、策略风控和技术指标</span>
+                    </summary>
+                    <div id="researchDetailsContent" class="research-details-content"></div>
+                </details>
+
+                <!-- 流量分析卡 -->
+                <div id="flowCard" class="card flow-card-v2 mb-6 fade-in" style="display:none;">
+                    <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3 mb-4">
+                        <div>
+                            <h3 class="text-sm font-semibold mb-1 flex items-center gap-2">🌊 题材流量分析</h3>
+                            <p id="flowModelNote" class="text-xs text-subtle leading-relaxed">按散户讨论热度、题材转化率、资金承接和板块内位置判断。</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2 lg:justify-end">
+                            <span id="flowRecommendation" class="flow-status-pill">--</span>
+                            <span id="flowModelVersion" class="flow-status-pill text-subtle">retail_attention_v2</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-4">
+                        <div class="flow-panel flow-panel-strong">
+                            <p class="flow-metric-label">散户流量方向</p>
+                            <p id="flowDirection" class="flow-metric-value text-accent mt-2">--</p>
+                            <p id="flowSourceSummary" class="text-xs text-subtle mt-2 leading-relaxed break-words">--</p>
+                        </div>
+                        <div class="flow-panel">
+                            <p class="flow-metric-label">题材接盘潜力</p>
+                            <div class="flex items-end gap-2 mt-2">
+                                <span id="flowScoreValue" class="flow-metric-value font-mono">--</span>
+                                <span class="text-xs text-subtle mb-1">/100</span>
+                            </div>
+                            <div class="w-full bg-gray-700 rounded-full h-2 mt-3">
+                                <div id="flowScoreBar" class="h-2 rounded-full transition-all duration-500" style="width:0%;background:linear-gradient(90deg,#ef4444,#eab308,#22c55e);"></div>
+                            </div>
+                        </div>
+                        <div class="flow-panel">
+                            <p class="flow-metric-label">阶段</p>
+                            <div id="flowPhaseBadge" class="inline-flex mt-2 text-base font-bold px-3 py-1.5 rounded-lg">--</div>
+                            <p id="flowPhaseDesc" class="text-xs text-subtle mt-2 leading-relaxed">--</p>
+                        </div>
+                        <div class="flow-panel" id="flowRiskPanel">
+                            <p class="flow-metric-label">风险提示</p>
+                            <p id="flowExitRisk" class="flow-metric-value mt-2">--</p>
+                            <p id="flowExitSignal" class="text-xs text-subtle mt-2 leading-relaxed">--</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                        <div class="flow-panel">
+                            <div class="flex items-center justify-between gap-2 mb-3">
+                                <p class="text-xs font-semibold">散户讨论热度</p>
+                                <span id="flowExternalHeat" class="flow-status-pill">--</span>
+                            </div>
+                            <div class="space-y-2 text-xs">
+                                <div id="flowAvailableSources" class="flow-source-list"></div>
+                                <p class="text-subtle">
+                                    未接入：
+                                    <span id="flowGubaStatus" class="font-medium">--</span>
+                                    <span class="mx-1">·</span>
+                                    <span id="flowXueqiuStatus" class="font-medium">--</span>
+                                    <span class="mx-1">·</span>
+                                    <span id="flowDouyinStatus" class="font-medium">--</span>
+                                </p>
+                                <div id="flowSourceTags" class="flow-source-list pt-1"></div>
+                                <div id="flowDiscussionLinks" class="flow-source-list pt-2"></div>
+                            </div>
+                        </div>
+                        <div class="flow-panel">
+                            <div class="flex items-center justify-between gap-2 mb-3">
+                                <p class="text-xs font-semibold">热度趋势</p>
+                                <span id="flowTrendScore" class="flow-status-pill">--</span>
+                            </div>
+                            <div id="flowTrendVisual" class="flow-trend-visual mb-3"></div>
+                            <p id="flowTimingAdvice" class="text-xs leading-relaxed text-subtle">--</p>
+                            <p id="flowTrendConfidence" class="text-[11px] text-subtle mt-2">--</p>
+                        </div>
+                        <div class="flow-panel">
+                            <div class="flex items-center justify-between gap-2 mb-3">
+                                <div class="flex items-center gap-2">
+                                    <p class="text-xs font-semibold">资金承接</p>
+                                    <span class="flow-help-wrap">
+                                        <button type="button" class="flow-help-dot" aria-label="资金承接说明" onclick="toggleCapitalHelp(event)">?</button>
+                                        <span id="flowCapitalHelpText" class="flow-help-tooltip" role="tooltip">量能倍数表示当前成交量相对近期均量的放大程度。</span>
+                                    </span>
+                                </div>
+                                <span id="flowCapitalSlope" class="flow-status-pill">--</span>
+                            </div>
+                            <p id="flowCapitalDesc" class="text-xs leading-relaxed text-subtle">--</p>
+                            <p id="flowCapitalNote" class="text-[11px] text-subtle mt-2">观察新增接盘资金是否持续进入。</p>
+                        </div>
+                        <div class="flow-panel">
+                            <div class="flex items-center justify-between gap-2 mb-3">
+                                <p class="text-xs font-semibold">龙头位置</p>
+                                <span id="flowLeaderLabel" class="flow-status-pill">--</span>
+                            </div>
+                            <p id="flowLeadershipDesc" class="text-xs leading-relaxed text-subtle">--</p>
+                            <p id="flowRankingStatus" class="text-[11px] text-subtle mt-2">--</p>
+                        </div>
+                    </div>
+
+                    <details class="flow-panel">
+                        <summary class="cursor-pointer text-xs font-semibold text-subtle">辅助承接证据</summary>
+                        <div class="flow-aux-grid mt-3">
                             <div>
-                                <h2 class="text-xl font-bold" id="stockName">--</h2>
-                                <p class="text-subtle text-sm" id="stockCode">--</p>
+                                <p class="flow-metric-label">成交量代理</p>
+                                <p id="flowVolumeBurst" class="text-sm font-mono font-medium">--</p>
+                            </div>
+                            <div>
+                                <p class="flow-metric-label">近5日涨幅</p>
+                                <p id="flowPriceMomentum" class="text-sm font-mono font-medium">--</p>
+                            </div>
+                            <div>
+                                <p class="flow-metric-label">波动率</p>
+                                <p id="flowVolatility" class="text-sm font-mono font-medium">--</p>
+                            </div>
+                            <div>
+                                <p class="flow-metric-label">连续上涨</p>
+                                <p id="flowUpDays" class="text-sm font-mono font-medium">--</p>
+                            </div>
+                            <div>
+                                <p class="flow-metric-label">名字辨识度</p>
+                                <p id="flowNameRecognition" class="text-sm font-medium">--</p>
+                            </div>
+                            <div>
+                                <p class="flow-metric-label">板块热度</p>
+                                <p id="flowSectorHeat" class="text-sm font-medium">--</p>
+                            </div>
+                        </div>
+                    </details>
+                    <div id="flowDataWarnings" class="mt-3 text-[11px] text-subtle leading-relaxed"></div>
+                </div>
+
+                <!-- 股票与综合摘要（辅助） -->
+                <div id="stockOverviewGrid" class="grid grid-cols-1 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.9fr)_minmax(0,0.9fr)] gap-4">
+                    <div class="card compact-info-card fade-in">
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <p class="section-divider-label mb-2">股票资料</p>
+                                <p class="text-sm"><span class="text-subtle">行业</span> <span id="stockIndustry" class="font-medium ml-2">--</span></p>
                             </div>
                             <div class="text-right">
-                                <p class="text-xs text-subtle">行业</p>
-                                <p class="text-sm font-medium" id="stockIndustry">--</p>
+                                <p class="text-[11px] text-subtle">当前价</p>
+                                <p id="stockPrice" class="text-lg font-bold font-mono">--</p>
                             </div>
                         </div>
-                        <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
-                            <div><span class="text-subtle">市值</span><br><span id="stockMarketCap" class="font-medium">--</span></div>
-                            <div><span class="text-subtle">市盈率</span><br><span id="stockPE" class="font-medium">--</span></div>
-                            <div><span class="text-subtle">流通市值</span><br><span id="stockFloatCap" class="font-medium">--</span></div>
-                            <div><span class="text-subtle">当前价</span><br><span id="stockPrice" class="font-medium">--</span></div>
+                        <div class="mt-4 grid grid-cols-3 gap-3 text-sm">
+                            <div><span class="text-subtle text-xs">市值</span><br><span id="stockMarketCap" class="font-medium">--</span></div>
+                            <div><span class="text-subtle text-xs">市盈率</span><br><span id="stockPE" class="font-medium">--</span></div>
+                            <div><span class="text-subtle text-xs">流通市值</span><br><span id="stockFloatCap" class="font-medium">--</span></div>
                         </div>
                     </div>
-                    <!-- Score Dashboard -->
-                    <div class="card fade-in flex flex-col items-center justify-center text-center">
-                        <p class="text-subtle text-xs mb-2">综合评分</p>
-                        <div id="scoreCircle" class="w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold mb-2" style="background:conic-gradient(#22c55e 0deg, #1a2754 0deg);">
-                            <span id="scoreValue" class="bg-card rounded-full w-20 h-20 flex items-center justify-center">--</span>
+                    <div class="card compact-info-card fade-in flex items-center justify-between gap-4">
+                        <div>
+                            <p class="section-divider-label mb-2">模型评分（详情）</p>
+                            <p id="scoreLabel" class="text-sm text-subtle">--</p>
                         </div>
-                        <p id="scoreLabel" class="text-sm text-subtle">--</p>
+                        <div id="scoreCircle" class="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold shrink-0" style="background:conic-gradient(#22c55e 0deg, #151f34 0deg);">
+                            <span id="scoreValue" class="bg-card rounded-full w-16 h-16 flex items-center justify-center">--</span>
+                        </div>
                     </div>
-                    <!-- Recommendation -->
-                    <div class="card fade-in flex flex-col items-center justify-center text-center sm:col-span-1 lg:col-span-1">
-                        <p class="text-subtle text-xs mb-3">综合建议</p>
-                        <div id="recommendBadge" class="recommend-hold rounded-xl px-6 py-3 w-full max-w-[200px]">
-                            <p id="recommendText" class="text-lg font-bold text-white">--</p>
+                    <div class="card compact-info-card fade-in">
+                        <p class="section-divider-label mb-2">底层合成结果</p>
+                        <div id="recommendBadge" class="recommend-hold rounded-lg px-4 py-2 w-full text-center">
+                            <p id="recommendText" class="text-base font-bold text-white">--</p>
                         </div>
-                        <div class="mt-3 flex gap-3 text-xs text-subtle">
-                            <span id="creditsDisplay">💎 剩余 0 credits</span>
-                            <span id="analysisTime">🕐 --</span>
+                        <div class="mt-3 flex flex-wrap gap-3 text-xs text-subtle">
+                            <span id="creditsDisplay">剩余 0 credits</span>
+                            <span id="analysisTime">--</span>
                         </div>
                     </div>
                 </div>
 
                 <!-- Analysis Text Summary -->
-                <div class="card mb-6 fade-in">
-                    <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">📝 分析摘要</h3>
+                <div id="analysisSummaryCard" class="card compact-info-card fade-in">
+                    <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">模型摘要</h3>
                     <div id="analysisText" class="text-sm leading-relaxed text-subtle whitespace-pre-wrap"></div>
                 </div>
 
-                <!-- Indicator Values -->
-                <div class="card mb-6 fade-in">
-                    <h3 class="text-sm font-semibold mb-3">📋 技术指标明细</h3>
-                    <div id="indicatorValues" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-sm"></div>
+                <!-- ====== 技术与风控辅助 ====== -->
+
+                <!-- 策略卖点提示卡 -->
+                <div id="strategyExitCard" class="card mb-6 fade-in" style="display:none;">
+                    <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-4">
+                        <div>
+                            <h3 class="text-sm font-semibold mb-2 flex items-center gap-2">策略卖点提示</h3>
+                            <p id="strategyExitSummary" class="text-sm text-subtle leading-relaxed">--</p>
+                        </div>
+                        <div class="flex flex-row lg:flex-col gap-2 lg:items-end">
+                            <div id="strategyRiskBadge" class="strategy-pill font-medium">--</div>
+                            <div id="strategyAdjustBadge" class="strategy-pill text-subtle">--</div>
+                        </div>
+                    </div>
+                    <div id="strategyCards" class="grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
+                    <div id="strategyPositionLine" class="mt-3 text-xs text-subtle"></div>
                 </div>
-
-                <!-- ↑ 指标明细 ↑ -->
-
-                <!-- ====== 增强分析卡片 ====== -->
 
                 <!-- 趋势分析卡 -->
                 <div id="trendCard" class="card mb-6 fade-in" style="display:none;">
-                    <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">📈 趋势分析</h3>
+                    <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">趋势分析</h3>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div class="bg-card-light rounded-lg p-3 text-center">
                             <p class="text-xs text-subtle mb-1">短期趋势（5日）</p>
@@ -335,14 +658,14 @@
 
                 <!-- 关键价位卡 -->
                 <div id="keyLevelsCard" class="card mb-6 fade-in" style="display:none;">
-                    <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">🎯 关键价位</h3>
+                    <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">关键价位</h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="bg-card-light rounded-lg p-3">
-                            <p class="text-xs text-subtle mb-2">🟢 支撑位</p>
+                            <p class="text-xs text-subtle mb-2">支撑位</p>
                             <div id="supportLevels" class="text-sm">暂无数据</div>
                         </div>
                         <div class="bg-card-light rounded-lg p-3">
-                            <p class="text-xs text-subtle mb-2">🔴 压力位</p>
+                            <p class="text-xs text-subtle mb-2">压力位</p>
                             <div id="resistanceLevels" class="text-sm">暂无数据</div>
                         </div>
                     </div>
@@ -350,16 +673,16 @@
 
                 <!-- 买卖信号卡 -->
                 <div id="signalsCard" class="card mb-6 fade-in" style="display:none;">
-                    <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">🚦 买卖信号</h3>
+                    <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">买卖信号</h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <p class="text-xs text-green-400 mb-2">✅ 买入信号</p>
+                            <p class="text-xs text-green-400 mb-2">买入信号</p>
                             <div id="buySignals" class="text-sm space-y-1">
                                 <p class="text-subtle">无</p>
                             </div>
                         </div>
                         <div>
-                            <p class="text-xs text-red-400 mb-2">❌ 卖出信号</p>
+                            <p class="text-xs text-red-400 mb-2">卖出信号</p>
                             <div id="sellSignals" class="text-sm space-y-1">
                                 <p class="text-subtle">无</p>
                             </div>
@@ -370,127 +693,44 @@
                     </div>
                 </div>
 
-                <!-- 策略卖点提示卡 -->
-                <div id="strategyExitCard" class="card mb-6 fade-in" style="display:none;">
-                    <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-4">
+                <!-- 技术面参考卡 -->
+                <div id="actionCard" class="card action-reference-card mb-6 fade-in" style="display:none;">
+                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
                         <div>
-                            <h3 class="text-sm font-semibold mb-2 flex items-center gap-2">🎯 策略卖点提示</h3>
-                            <p id="strategyExitSummary" class="text-sm text-subtle leading-relaxed">--</p>
+                            <h3 class="text-sm font-semibold flex items-center gap-2">💡 技术面参考</h3>
+                            <p class="text-xs text-subtle mt-1">只展示技术层的计算记录，不形成第二套页面结论。</p>
                         </div>
-                        <div class="flex flex-row lg:flex-col gap-2 lg:items-end">
-                            <div id="strategyRiskBadge" class="strategy-pill font-medium">--</div>
-                            <div id="strategyAdjustBadge" class="strategy-pill text-subtle">--</div>
-                        </div>
+                        <div id="actFinalBadge" class="strategy-pill text-accent font-medium self-start">底层 --</div>
                     </div>
-                    <div id="strategyCards" class="grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
-                    <div id="strategyPositionLine" class="mt-3 text-xs text-subtle"></div>
-                </div>
-
-                <!-- 操作建议卡 -->
-                <div id="actionCard" class="card mb-6 fade-in" style="display:none;">
-                    <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">💡 技术面操作建议</h3>
                     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                         <div class="bg-card-light rounded-lg p-3 text-center">
-                            <p class="text-xs text-subtle mb-1">建议操作</p>
+                            <p class="text-xs text-subtle mb-1">技术动作</p>
                             <p id="actOperation" class="text-sm font-bold text-green-400">--</p>
                         </div>
                         <div class="bg-card-light rounded-lg p-3 text-center">
-                            <p class="text-xs text-subtle mb-1">建议仓位</p>
+                            <p class="text-xs text-subtle mb-1">仓位参考</p>
                             <p id="actPosition" class="text-sm font-medium">--</p>
                         </div>
                         <div class="bg-card-light rounded-lg p-3 text-center">
-                            <p class="text-xs text-subtle mb-1">止损价</p>
+                            <p class="text-xs text-subtle mb-1">防守线</p>
                             <p id="actStopLoss" class="text-sm font-mono text-yellow-400">--</p>
                         </div>
                         <div class="bg-card-light rounded-lg p-3 text-center">
-                            <p class="text-xs text-subtle mb-1">止盈价</p>
+                            <p class="text-xs text-subtle mb-1">压力/目标</p>
                             <p id="actTakeProfit" class="text-sm font-mono text-green-400">--</p>
                         </div>
                         <div class="bg-card-light rounded-lg p-3 text-center">
-                            <p class="text-xs text-subtle mb-1">持有周期</p>
+                            <p class="text-xs text-subtle mb-1">观察周期</p>
                             <p id="actPeriod" class="text-sm font-medium">--</p>
                         </div>
                         <div class="bg-card-light rounded-lg p-3 text-center">
-                            <p class="text-xs text-subtle mb-1">风险等级</p>
+                            <p class="text-xs text-subtle mb-1">技术风险</p>
                             <p id="actRiskLevel" class="text-sm font-medium">--</p>
                         </div>
                     </div>
                     <div id="actionBasisBlock" class="mt-3 bg-card-light rounded-lg p-3 text-xs leading-relaxed text-subtle" style="display:none;">
-                        <p><span class="text-subtle">技术原始建议：</span><span id="actTechnicalAction" class="font-medium text-accent">--</span></p>
+                        <p><span class="text-subtle">技术原始动作：</span><span id="actTechnicalAction" class="font-medium text-accent">--</span></p>
                         <p id="actBasisReason" class="mt-2 whitespace-pre-wrap"></p>
-                    </div>
-                </div>
-
-                <!-- 流量分析卡 -->
-                <div id="flowCard" class="card mb-6 fade-in" style="display:none;">
-                    <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">🌊 流量分析</h3>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                        <!-- 流量分数仪表盘 -->
-                        <div class="bg-card-light rounded-lg p-4 flex flex-col items-center justify-center">
-                            <p class="text-xs text-subtle mb-2">流量总分</p>
-                            <div id="flowScoreCircle" class="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold" style="background:conic-gradient(#4a9eff 0deg, #1a2754 0deg);">
-                                <span id="flowScoreValue" class="bg-card-light rounded-full w-16 h-16 flex items-center justify-center">--</span>
-                            </div>
-                            <p id="flowRecommendation" class="text-xs mt-2 font-medium">--</p>
-                        </div>
-                        <!-- 流量阶段 -->
-                        <div class="bg-card-light rounded-lg p-4 flex flex-col items-center justify-center">
-                            <p class="text-xs text-subtle mb-2">流量阶段</p>
-                            <div id="flowPhaseBadge" class="text-lg font-bold px-4 py-2 rounded-xl">--</div>
-                            <p id="flowPhaseDesc" class="text-xs text-subtle mt-2 text-center">--</p>
-                        </div>
-                        <!-- 量能爆发度 -->
-                        <div class="bg-card-light rounded-lg p-4">
-                            <p class="text-xs text-subtle mb-2">量能爆发度</p>
-                            <div class="flex items-end gap-2 mb-1">
-                                <span id="flowVolumeBurst" class="text-2xl font-bold font-mono">--</span>
-                                <span class="text-xs text-subtle mb-1">倍</span>
-                            </div>
-                            <div class="w-full bg-gray-700 rounded-full h-2 mb-1">
-                                <div id="flowVolumeBar" class="h-2 rounded-full transition-all duration-500" style="width:0%;background:linear-gradient(90deg,#22c55e,#eab308,#ef4444);"></div>
-                            </div>
-                            <p id="flowVolumeDesc" class="text-xs text-subtle">--</p>
-                        </div>
-                        <!-- 龙头潜力 -->
-                        <div class="bg-card-light rounded-lg p-4">
-                            <p class="text-xs text-subtle mb-2">龙头潜力</p>
-                            <div class="flex items-end gap-2 mb-1">
-                                <span id="flowLeadershipScore" class="text-2xl font-bold font-mono">--</span>
-                                <span class="text-xs text-subtle mb-1">分</span>
-                            </div>
-                            <p id="flowLeadershipLevel" class="text-sm font-medium mb-1">--</p>
-                            <p id="flowLeadershipDesc" class="text-xs text-subtle">--</p>
-                        </div>
-                    </div>
-                    <!-- 详细指标 -->
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                        <div class="bg-accent/30 rounded-lg p-2.5 text-center">
-                            <p class="text-xs text-subtle">价格动量</p>
-                            <p id="flowPriceMomentum" class="text-sm font-mono font-medium">--</p>
-                        </div>
-                        <div class="bg-accent/30 rounded-lg p-2.5 text-center">
-                            <p class="text-xs text-subtle">波动率</p>
-                            <p id="flowVolatility" class="text-sm font-mono font-medium">--</p>
-                        </div>
-                        <div class="bg-accent/30 rounded-lg p-2.5 text-center">
-                            <p class="text-xs text-subtle">连续上涨</p>
-                            <p id="flowUpDays" class="text-sm font-mono font-medium">--</p>
-                        </div>
-                        <div class="bg-accent/30 rounded-lg p-2.5 text-center">
-                            <p class="text-xs text-subtle">名字辨识度</p>
-                            <p id="flowNameRecognition" class="text-sm font-medium">--</p>
-                        </div>
-                    </div>
-                    <!-- 操作提示 -->
-                    <div class="bg-card-light rounded-lg p-3 space-y-2">
-                        <div class="flex items-start gap-2">
-                            <span>⏰</span>
-                            <p class="text-xs"><span class="text-subtle">时机：</span><span id="flowTimingAdvice" class="font-medium">--</span></p>
-                        </div>
-                        <div class="flex items-start gap-2">
-                            <span>🚪</span>
-                            <p class="text-xs"><span class="text-subtle">退出：</span><span id="flowExitSignal" class="font-medium">--</span></p>
-                        </div>
                     </div>
                 </div>
 
@@ -501,13 +741,13 @@
                 </div>
 
                 <!-- History -->
-                <div class="card fade-in">
+                <div class="card fade-in" id="historyCard">
                     <h3 class="text-sm font-semibold mb-4 flex items-center gap-2">📋 最近分析记录</h3>
                     <div id="historyList" class="divide-y divide-theme/50 text-sm"></div>
                 </div>
 
                 <!-- K-line Chart -->
-                <div class="card mt-6 mb-6 fade-in">
+                <div class="card mt-6 mb-6 fade-in" id="klineChartCard">
                     <div class="flex items-center justify-between mb-3">
                         <h3 class="text-sm font-semibold">📊 K线图 <span class="text-subtle text-xs font-normal">(MA5/10/20/60)</span></h3>
                         <div class="flex gap-1" id="klinePeriods">
@@ -519,8 +759,14 @@
                     <div id="klineChart" style="width:100%;height:480px;"></div>
                 </div>
 
+                <!-- Indicator Values -->
+                <div class="card mb-6 fade-in" id="indicatorValuesCard">
+                    <h3 class="text-sm font-semibold mb-3">📋 技术指标明细</h3>
+                    <div id="indicatorValues" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-sm"></div>
+                </div>
+
                 <!-- Technical Indicators Grid -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6" id="technicalChartsGrid">
                     <div class="card fade-in">
                         <h3 class="text-sm font-semibold mb-3">📉 MACD</h3>
                         <div id="macdChart" style="width:100%;height:240px;"></div>
@@ -575,11 +821,104 @@
                 </div>
                 <button id="dailyPicksRunAllBtn" onclick="runDailyPicks('all')" class="btn-primary text-xs px-4 py-2 rounded-lg whitespace-nowrap">刷新全部</button>
             </div>
+            <section id="dailyHeatRankingCard" class="card daily-heat-card mb-5 fade-in">
+                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+                    <div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h3 class="text-base font-semibold">今日资金进入与散户流量榜</h3>
+                            <span id="dailyHeatStatus" class="flow-status-pill text-subtle">加载中</span>
+                        </div>
+                        <p id="dailyHeatMeta" class="text-xs text-subtle mt-1">追踪资金进入增强与外部流量升温，不构成买入建议。</p>
+                    </div>
+                    <button id="dailyHeatRefreshBtn" onclick="loadDailyHeatRanking(true)" class="btn-ghost text-xs px-3 py-2 rounded-lg whitespace-nowrap">刷新热榜</button>
+                </div>
+                <div id="dailyHeatRankingList" class="daily-heat-list"></div>
+                <p id="dailyHeatWarnings" class="text-[11px] text-subtle mt-3 leading-relaxed" style="display:none;"></p>
+            </section>
+            <section id="morningNoteCard" class="card morning-note-card mb-5 fade-in">
+                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+                    <div class="min-w-0">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h3 class="text-base font-semibold">A股晨会稿</h3>
+                            <span id="morningNoteStatus" class="flow-status-pill text-subtle">待生成</span>
+                        </div>
+                        <p id="morningNoteMeta" class="text-xs text-subtle mt-1">聚合今日推荐、热榜和相关 ETF，仅供研究参考。</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button id="morningNoteCopyBtn" onclick="copyMorningNote()" class="btn-ghost text-xs px-3 py-2 rounded-lg whitespace-nowrap">复制</button>
+                        <button id="morningNoteRefreshBtn" onclick="loadMorningNote(true)" class="btn-ghost text-xs px-3 py-2 rounded-lg whitespace-nowrap">刷新晨会稿</button>
+                    </div>
+                </div>
+                <div id="morningNoteContent" class="space-y-3">
+                    <div class="morning-note-top-call text-sm">等待生成晨会稿...</div>
+                </div>
+            </section>
             <div id="dailyPicksContent" class="space-y-4"></div>
             <div id="dailyPicksEmpty" class="text-center py-20" style="display:none;">
                 <div class="text-5xl mb-4 opacity-40">📌</div>
                 <p class="text-subtle text-sm">暂无今日推荐</p>
                 <p class="text-xs text-subtle mt-2 opacity-60">部分策略会在交易时段后生成</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====== QUANT STRATEGIES PAGE (#/quant-strategies) ====== -->
+    <div id="page-quant-strategies" class="page">
+        <div class="max-w-6xl mx-auto px-4 py-6">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+                <div>
+                    <h2 class="text-lg font-semibold">量化策略</h2>
+                    <p class="text-xs text-subtle mt-1">粘贴 Python/聚宽策略，静态解析选股、买点、卖点与风控逻辑。</p>
+                </div>
+                <button onclick="startNewQuantStrategy()" class="btn-primary text-xs px-4 py-2 rounded-lg whitespace-nowrap">新建策略</button>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-4">
+                <section class="card fade-in">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-sm font-semibold">我的策略库</h3>
+                        <button onclick="loadQuantStrategies(true)" class="btn-ghost text-xs px-3 py-1.5 rounded-lg">刷新</button>
+                    </div>
+                    <div id="quantStrategiesList" class="space-y-2"></div>
+                    <div id="quantStrategiesEmpty" class="text-center py-10" style="display:none;">
+                        <div class="text-4xl mb-3 opacity-40">🧮</div>
+                        <p class="text-sm text-subtle">还没有保存量化策略</p>
+                    </div>
+                </section>
+
+                <section class="card fade-in">
+                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                        <div class="space-y-3 min-w-0">
+                            <div>
+                                <label class="block text-xs text-subtle mb-1.5">策略名称</label>
+                                <input id="quantTitleInput" type="text" placeholder="如：聚宽均线止损策略" maxlength="120">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-subtle mb-1.5">策略平台</label>
+                                <select id="quantPlatformSelect">
+                                    <option value="python_joinquant">Python / 聚宽</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-subtle mb-1.5">策略代码</label>
+                                <textarea id="quantSourceInput" class="font-mono text-xs leading-relaxed" rows="18" placeholder="def initialize(context):&#10;    ..."></textarea>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                <button id="quantSaveBtn" onclick="saveQuantStrategy()" class="btn-primary text-xs px-4 py-2 rounded-lg">保存并解析</button>
+                                <button id="quantReanalyzeBtn" onclick="reanalyzeQuantStrategy()" class="btn-ghost text-xs px-4 py-2 rounded-lg">重新解析</button>
+                                <button id="quantDeleteBtn" onclick="deleteQuantStrategy()" class="btn-danger text-xs px-4 py-2 rounded-lg">删除</button>
+                            </div>
+                            <p class="text-[11px] text-subtle leading-relaxed">系统不会执行粘贴代码；AI 增强默认关闭，只有后端配置模型服务时才会发送代码用于解读。</p>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="flex flex-wrap items-center gap-2 mb-3">
+                                <h3 class="text-sm font-semibold">解析结果</h3>
+                                <span id="quantParseStatus" class="strategy-pill">未解析</span>
+                                <span id="quantAiStatus" class="strategy-pill">本地静态解析</span>
+                            </div>
+                            <div id="quantAnalysisContent" class="space-y-3"></div>
+                        </div>
+                    </div>
+                </section>
             </div>
         </div>
     </div>
@@ -605,7 +944,10 @@
 
 <script>
 // ===================== CONFIG =====================
-const API_BASE = window.location.origin;
+const APP_BASE_PATH = (
+    window.location.pathname === '/a-stock' || window.location.pathname.startsWith('/a-stock/')
+) ? '/a-stock' : '';
+const API_BASE = `${window.location.origin}${APP_BASE_PATH}`;
 const COLORS = {
     up: '#ef4444',   // red: price up (Chinese convention)
     down: '#22c55e', // green: price down
@@ -630,6 +972,11 @@ let state = {
     tradeDates: [],
     tradeDateSet: new Set(),
     latestTradeDate: '',
+    historyRecords: new Map(),
+    watchlistItems: new Map(),
+    quantStrategies: [],
+    selectedQuantStrategyId: null,
+    morningNote: null,
     charts: {
         kline: null,
         macd: null,
@@ -638,6 +985,8 @@ let state = {
         boll: null
     }
 };
+let dailyHeatRankingLoading = false;
+let dailyHeatRankingRequestId = 0;
 
 // ===================== API HELPER =====================
 async function apiCall(method, url, body = null) {
@@ -649,6 +998,28 @@ async function apiCall(method, url, body = null) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || `请求失败 (${res.status})`);
     return data;
+}
+
+async function apiCallWithTimeout(method, url, body = null, timeoutMs = 10000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (state.token) headers['Authorization'] = `Bearer ${state.token}`;
+        const opts = { method, headers, signal: controller.signal };
+        if (body) opts.body = JSON.stringify(body);
+        const res = await fetch(url, opts);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `请求失败 (${res.status})`);
+        return data;
+    } catch (e) {
+        if (e.name === 'AbortError') {
+            throw new Error(`热榜请求超时（${Math.round(timeoutMs / 1000)}秒），公开资金流源可能暂时不可用`);
+        }
+        throw e;
+    } finally {
+        clearTimeout(timer);
+    }
 }
 
 // ===================== TOAST =====================
@@ -671,7 +1042,7 @@ function hideGlobalLoading() { document.getElementById('globalLoading').style.di
 function switchPage(e, page) {
     if (e) e.preventDefault();
     // Update hash
-    const hash = { analyze: '#/analyze', 'daily-picks': '#/daily-picks', watchlist: '#/watchlist', login: '#/login', register: '#/register' }[page];
+    const hash = { analyze: '#/analyze', 'daily-picks': '#/daily-picks', 'quant-strategies': '#/quant-strategies', watchlist: '#/watchlist', login: '#/login', register: '#/register' }[page];
     if (hash && window.location.hash !== hash) window.location.hash = hash;
     navigateToPage(page);
 }
@@ -695,17 +1066,19 @@ function navigateToPage(page) {
         document.getElementById('page-register').style.display = 'none';
         document.getElementById('page-analyze').style.display = page === 'analyze' ? 'block' : 'none';
         document.getElementById('page-daily-picks').style.display = page === 'daily-picks' ? 'block' : 'none';
+        document.getElementById('page-quant-strategies').style.display = page === 'quant-strategies' ? 'block' : 'none';
         document.getElementById('page-watchlist').style.display = page === 'watchlist' ? 'block' : 'none';
-        if (page === 'analyze' || page === 'daily-picks' || page === 'watchlist') {
+        if (page === 'analyze' || page === 'daily-picks' || page === 'quant-strategies' || page === 'watchlist') {
             document.getElementById(`page-${page}`).classList.add('active');
         }
         // Update nav active
         document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active-nav'));
-        const navKey = page === 'analyze' ? 'anal' : (page === 'daily-picks' ? 'daily' : 'watch');
+        const navKey = page === 'analyze' ? 'anal' : (page === 'daily-picks' ? 'daily' : (page === 'quant-strategies' ? 'quant' : 'watch'));
         document.querySelectorAll('.nav-' + navKey).forEach(l => l.classList.add('active-nav'));
 
         // Load page data
         if (page === 'daily-picks') loadDailyPicks();
+        if (page === 'quant-strategies') loadQuantStrategies();
         if (page === 'watchlist') loadWatchlist();
         if (page === 'analyze') {
             loadHistory();
@@ -726,6 +1099,7 @@ async function handleRegister() {
 
     if (!username || !email || !password) { showError(errEl, '请填写所有字段'); return; }
     if (password.length < 6) { showError(errEl, '密码至少6位'); return; }
+    if (new TextEncoder().encode(password).length > 72) { showError(errEl, '密码不能超过72字节，请缩短后重试'); return; }
     if (password !== confirm) { showError(errEl, '两次密码不一致'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showError(errEl, '邮箱格式不正确'); return; }
 
@@ -862,14 +1236,16 @@ async function loadBuyTradeDates(code) {
         const dates = normalizeTradeDates(res.data !== undefined ? res.data : res);
         if (!dates.length) {
             resetBuyDateControls('未获取到交易日');
-            return;
+            return [];
         }
 
         populateBuyDateControls(dates);
+        return state.tradeDates;
     } catch (e) {
         if (requestId !== state.tradeDatesRequestId) return;
         resetBuyDateControls('交易日加载失败');
         showToast(`买入交易日加载失败：${e.message}`, 'warning');
+        return [];
     }
 }
 
@@ -899,6 +1275,7 @@ function populateBuyDateControls(dates) {
     ).join('');
     yearSelect.disabled = false;
     updateBuyMonthOptions();
+    return validDates;
 }
 
 function updateBuyMonthOptions() {
@@ -949,6 +1326,22 @@ function getSelectedBuyDate() {
     if (!year || !month || !day) return '';
     const date = `${year}-${month}-${day}`;
     return state.tradeDateSet && state.tradeDateSet.has(date) ? date : '';
+}
+
+function setSelectedBuyDate(date) {
+    const normalized = String(date || '').trim().slice(0, 10);
+    const yearSelect = document.getElementById('buyYearSelect');
+    const monthSelect = document.getElementById('buyMonthSelect');
+    const daySelect = document.getElementById('buyDaySelect');
+    if (!yearSelect || !monthSelect || !daySelect || !/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return false;
+    if (!state.tradeDateSet || !state.tradeDateSet.has(normalized)) return false;
+
+    yearSelect.value = normalized.slice(0, 4);
+    updateBuyMonthOptions();
+    monthSelect.value = normalized.slice(5, 7);
+    updateBuyDayOptions();
+    daySelect.value = normalized.slice(8, 10);
+    return getSelectedBuyDate() === normalized;
 }
 
 function handleStockCodeInput() {
@@ -1022,6 +1415,44 @@ async function analyzeStock(code) {
 function analyzeFromWatchlist(code) {
     const normalizedCode = String(code || '').trim();
     if (!normalizedCode) return;
+    const item = state.watchlistItems && state.watchlistItems.get(normalizedCode);
+    if (window.location.hash !== '#/analyze') window.location.hash = '#/analyze';
+    navigateToPage('analyze');
+    const input = document.getElementById('stockCodeInput');
+    const costInput = document.getElementById('costPriceInput');
+    if (input) {
+        input.value = normalizedCode;
+        handleStockCodeInput();
+    }
+    const costValue = item && (
+        item.latest_position_cost_price ?? item.latestPositionCostPrice ??
+        item.latest_cost_price ?? item.latestCostPrice ?? ''
+    );
+    if (costInput && costValue !== null && costValue !== undefined && costValue !== '') {
+        costInput.value = String(costValue);
+    }
+    const buyDate = item && (
+        item.latest_position_buy_date || item.latestPositionBuyDate ||
+        item.latest_buy_date || item.latestBuyDate || ''
+    );
+    if (buyDate) {
+        loadBuyTradeDates(normalizedCode).then(dates => {
+            if (dates && dates.length && !setSelectedBuyDate(buyDate)) {
+                showToast('历史买入日期不在当前交易日列表中，已仅回填成本价', 'warning');
+            }
+            analyzeStock(normalizedCode);
+        });
+        return;
+    }
+    analyzeStock(normalizedCode);
+}
+
+function analyzeFromDailyPick(code) {
+    const normalizedCode = String(code || '').replace(/\D/g, '').slice(0, 6);
+    if (!/^\d{6}$/.test(normalizedCode)) {
+        showToast('推荐股票缺少有效代码', 'warning');
+        return;
+    }
     if (window.location.hash !== '#/analyze') window.location.hash = '#/analyze';
     navigateToPage('analyze');
     const input = document.getElementById('stockCodeInput');
@@ -1030,6 +1461,32 @@ function analyzeFromWatchlist(code) {
         handleStockCodeInput();
     }
     analyzeStock(normalizedCode);
+}
+
+async function analyzeFromHistory(id) {
+    const record = state.historyRecords && state.historyRecords.get(Number(id));
+    if (!record) return;
+    const code = String(record.stock_code || record.code || '').trim();
+    if (!/^\d{6}$/.test(code)) {
+        showToast('历史记录缺少有效股票代码', 'warning');
+        return;
+    }
+
+    if (window.location.hash !== '#/analyze') window.location.hash = '#/analyze';
+    navigateToPage('analyze');
+
+    const input = document.getElementById('stockCodeInput');
+    const costInput = document.getElementById('costPriceInput');
+    if (input) input.value = code;
+    const costValue = record.cost_price ?? record.costPrice ?? '';
+    if (costInput) costInput.value = costValue !== null && costValue !== undefined ? String(costValue) : '';
+
+    const dates = await loadBuyTradeDates(code);
+    const buyDate = record.buy_date || record.buyDate || '';
+    if (buyDate && dates && dates.length && !setSelectedBuyDate(buyDate)) {
+        showToast('历史买入日期不在当前交易日列表中，已仅回填成本价', 'warning');
+    }
+    await analyzeStock(code);
 }
 
 function renderAnalysisResult(data) {
@@ -1043,6 +1500,7 @@ function renderAnalysisResult(data) {
     document.getElementById('stockName').textContent = data.stock_name || '--';
     document.getElementById('stockCode').textContent = (data.stock_code || '--');
     document.getElementById('stockIndustry').textContent = data.industry || '--';
+    setSectorHeatPills('stockSectorTags', data);
 
     const fmtNum = (v) => { if (!v || v === '--') return '--'; const n = parseFloat(v); return n >= 100000000 ? (n/100000000).toFixed(2) + '亿' : n >= 10000 ? (n/10000).toFixed(2) + '万' : n.toFixed(2); };
     document.getElementById('stockMarketCap').textContent = data.market_cap ? `${parseFloat(data.market_cap).toFixed(0)}亿` : '--';
@@ -1055,7 +1513,7 @@ function renderAnalysisResult(data) {
     document.getElementById('scoreValue').textContent = scoreVal;
     const scoreBg = scoreVal > 60 ? '#22c55e' : scoreVal > 40 ? '#eab308' : '#ef4444';
     const deg = Math.min((scoreVal / 100) * 360, 360);
-    document.getElementById('scoreCircle').style.background = `conic-gradient(${scoreBg} ${deg}deg, #1a2754 ${deg}deg)`;
+    document.getElementById('scoreCircle').style.background = `conic-gradient(${scoreBg} ${deg}deg, #151f34 ${deg}deg)`;
     document.getElementById('scoreLabel').textContent = scoreVal > 80 ? '优秀' : scoreVal > 60 ? '良好' : scoreVal > 40 ? '一般' : '较差';
 
     // --- Recommendation ---
@@ -1099,12 +1557,352 @@ function renderAnalysisResult(data) {
 
     // --- Enhanced Cards ---
     renderEnhancedCards(data);
+    renderThemeDashboard(data);
+    arrangeAnalysisSections();
 }
 
 function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, ch => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
     }[ch]));
+}
+
+function normalizeDisplayValue(value) {
+    if (value === null || value === undefined) return '';
+    if (Array.isArray(value)) {
+        return value.map(normalizeDisplayValue).filter(Boolean).join('、');
+    }
+    if (typeof value === 'object') {
+        const preferred = value.name ?? value.label ?? value.title ?? value.value ?? value.text ?? value.desc ?? value.description;
+        if (preferred !== null && preferred !== undefined) return normalizeDisplayValue(preferred);
+        return '';
+    }
+    const text = String(value).trim();
+    if (!text || text === '--' || /^null$/i.test(text) || /^undefined$/i.test(text)) return '';
+    return text;
+}
+
+function isUnknownSectorValue(value) {
+    const text = normalizeDisplayValue(value);
+    return !text || ['未知', '未知板块', 'unknown', 'Unknown', 'UNKNOWN'].includes(text);
+}
+
+function pickDisplayValue(...values) {
+    for (const value of values) {
+        const normalized = normalizeDisplayValue(value);
+        if (normalized) return normalized;
+    }
+    return '';
+}
+
+function normalizeStockCode(value) {
+    const text = normalizeDisplayValue(value);
+    const digits = text.replace(/\D/g, '');
+    if (!digits) return '';
+    return digits.slice(-6).padStart(6, '0');
+}
+
+function stockMarketPrefix(code) {
+    const normalized = normalizeStockCode(code);
+    if (/^[023]/.test(normalized)) return 'SZ';
+    if (/^[489]/.test(normalized)) return 'BJ';
+    return 'SH';
+}
+
+function buildDiscussionLinks(data, retail) {
+    const rawLinks = (retail && retail.links && typeof retail.links === 'object') ? retail.links : {};
+    const code = normalizeStockCode(pickDisplayValue(
+        data && data.stock_code,
+        data && data.code,
+        data && data.symbol,
+        retail && retail.stock_code
+    ));
+    const prefix = stockMarketPrefix(code);
+    const fallbackLinks = code ? {
+        eastmoney_guba: `https://guba.eastmoney.com/list,${code}.html`,
+        eastmoney_quote: `https://quote.eastmoney.com/${prefix.toLowerCase()}${code}.html`,
+        xueqiu: `https://xueqiu.com/S/${prefix}${code}`
+    } : {};
+    const links = { ...fallbackLinks, ...rawLinks };
+    return [
+        ['eastmoney_guba', '东财股吧'],
+        ['eastmoney_quote', '东财行情'],
+        ['xueqiu', '雪球个股']
+    ]
+        .map(([key, label]) => ({ key, label, href: normalizeDisplayValue(links[key]) }))
+        .filter(link => /^https?:\/\//i.test(link.href));
+}
+
+function getNestedValue(source, path) {
+    return path.split('.').reduce((obj, key) => (obj && obj[key] !== undefined ? obj[key] : undefined), source);
+}
+
+function pickField(source, paths) {
+    if (!source || typeof source !== 'object') return '';
+    return pickDisplayValue(...paths.map(path => getNestedValue(source, path)));
+}
+
+function getRelatedSector(data) {
+    const sector = pickField(data, [
+        'related_sector',
+        'relatedSector',
+        'latest_related_sector',
+        'latestRelatedSector',
+        'latest_sector_name',
+        'latestSectorName',
+        'sector_name',
+        'sectorName',
+        'sector',
+        'hot_sector',
+        'concept_sector',
+        'concept',
+        'industry_sector',
+        'industry',
+        'metrics.related_sector',
+        'metrics.sector',
+        'metrics.industry'
+    ]);
+    return isUnknownSectorValue(sector) ? '' : sector;
+}
+
+function getRecentHeat(data) {
+    return pickField(data, [
+        'recent_heat',
+        'recentHeat',
+        'latest_recent_heat',
+        'latestRecentHeat',
+        'latest_sector_heat',
+        'latestSectorHeat',
+        'latest_sector_score',
+        'latestSectorScore',
+        'sector_heat',
+        'sectorHeat',
+        'heat_level',
+        'heatLevel',
+        'heat_tag',
+        'heatTag',
+        'heat',
+        'metrics.recent_heat',
+        'metrics.sector_heat',
+        'metrics.heat',
+        'flow_signals.sector_heat',
+        'flow_signals.recent_heat',
+        'flow_timing.sector_heat'
+    ]);
+}
+
+function renderSectorHeatPillItems(data, options = {}) {
+    const sector = getRelatedSector(data);
+    const heat = getRecentHeat(data);
+    const pills = [];
+    const compact = options.compact ? ' max-w-[150px]' : '';
+    if (sector) pills.push(`<span class="sector-pill${compact}" title="${escapeHtml(sector)}">板块 ${escapeHtml(sector)}</span>`);
+    if (heat) pills.push(`<span class="sector-pill heat-pill${compact}" title="${escapeHtml(heat)}">热度 ${escapeHtml(formatScoreForDashboard(heat))}</span>`);
+    return pills;
+}
+
+function renderSectorHeatPills(data, options = {}) {
+    const pills = renderSectorHeatPillItems(data, options);
+    if (!pills.length) return '';
+    const classes = options.className || 'mt-2 flex flex-wrap gap-2 min-w-0';
+    return `<div class="${classes}">${pills.join('')}</div>`;
+}
+
+function getWatchlistFlowPills(item) {
+    const analyzed = item && item.latest_score !== null && item.latest_score !== undefined;
+    const direction = pickDisplayValue(
+        item.latest_retail_direction,
+        item.latestRetailDirection,
+        getNestedValue(item, 'latest_sector_context.retail_direction'),
+        getNestedValue(item, 'latest_sector_context.attention_direction')
+    );
+    const retailScore = pickDisplayValue(
+        item.latest_retail_score,
+        item.latestRetailScore,
+        getNestedValue(item, 'latest_sector_context.retail_score'),
+        getNestedValue(item, 'latest_sector_context.retail_attention_score')
+    );
+    const strategyRiskScore = pickDisplayValue(item.latest_strategy_risk_score, item.latestStrategyRiskScore);
+    const exitRiskScore = pickDisplayValue(item.latest_exit_risk_score, item.latestExitRiskScore);
+    const flowRecommendation = pickDisplayValue(item.latest_flow_recommendation, item.latestFlowRecommendation);
+    const pills = [];
+
+    pills.push(...renderSectorHeatPillItems(item, { compact: true }));
+    if (direction) {
+        const retailLabel = retailScore ? `散户 ${direction} ${formatScoreForDashboard(retailScore)}` : `散户 ${direction}`;
+        pills.push(`<span class="sector-pill retail-pill max-w-[150px]" title="${escapeHtml(retailLabel)}">${escapeHtml(retailLabel)}</span>`);
+    }
+    if (strategyRiskScore) {
+        pills.push(`<span class="sector-pill risk-pill max-w-[150px]" title="卖点风险 ${escapeHtml(strategyRiskScore)}">卖点风险 ${escapeHtml(formatScoreForDashboard(strategyRiskScore))}</span>`);
+    } else if (exitRiskScore && Number(exitRiskScore) >= 60) {
+        pills.push(`<span class="sector-pill risk-pill max-w-[150px]" title="退出风险 ${escapeHtml(exitRiskScore)}">退出风险 ${escapeHtml(formatScoreForDashboard(exitRiskScore))}</span>`);
+    }
+    if (!direction && flowRecommendation) {
+        pills.push(`<span class="sector-pill muted-pill max-w-[150px]" title="${escapeHtml(flowRecommendation)}">流量 ${escapeHtml(flowRecommendation)}</span>`);
+    }
+    if (!pills.length && !analyzed) {
+        pills.push('<span class="sector-pill muted-pill">分析后生成板块/热度/流量</span>');
+    }
+    return pills.length ? `<div class="mt-2 flex flex-wrap gap-1.5 min-w-0">${pills.join('')}</div>` : '';
+}
+
+function getWatchlistRiskText(item) {
+    const strategyRiskScore = pickDisplayValue(item.latest_strategy_risk_score, item.latestStrategyRiskScore);
+    const exitRiskScore = pickDisplayValue(item.latest_exit_risk_score, item.latestExitRiskScore);
+    const strategyRiskLevel = pickDisplayValue(item.latest_strategy_risk_level, item.latestStrategyRiskLevel);
+    if (strategyRiskScore) return `卖点风险${formatScoreForDashboard(strategyRiskScore)}`;
+    if (exitRiskScore && Number(exitRiskScore) >= 60) return `退出风险${formatScoreForDashboard(exitRiskScore)}`;
+    if (strategyRiskLevel) return `风险${strategyRiskLevel}`;
+    return '';
+}
+
+const WATCHLIST_EXIT_STRATEGIES = [
+    { key: 'first_board_relay', name: '首板接力' },
+    { key: 'leader_chase', name: '龙头追击' },
+    { key: 'etf_rotation', name: 'ETF动量轮动' },
+    { key: 'qlib_model', name: 'Qlib模型研究参考' }
+];
+
+function getLatestStrategyExit(item) {
+    const strategyExit = item && (item.latest_strategy_exit || item.latestStrategyExit);
+    return strategyExit && typeof strategyExit === 'object' && !Array.isArray(strategyExit) ? strategyExit : null;
+}
+
+function hasValidCostPrice(value) {
+    const num = Number(value);
+    return Number.isFinite(num) && num > 0;
+}
+
+function isEtfWatchlistItem(item) {
+    const strategyExit = getLatestStrategyExit(item);
+    const typeText = String(
+        item?.instrument_type || item?.instrumentType || item?.latest_instrument_type ||
+        item?.latestInstrumentType || strategyExit?.instrument_type || ''
+    ).toLowerCase();
+    const code = normalizeStockCode(item?.stock_code || item?.code || '');
+    const name = String(item?.stock_name || item?.name || '').toLowerCase();
+    return Boolean(
+        item?.is_etf || item?.isEtf || strategyExit?.is_etf ||
+        typeText.includes('etf') || typeText.includes('fund') ||
+        name.includes('etf') || /^(510|511|512|513|515|516|517|518|159|588)/.test(code)
+    );
+}
+
+function getWatchlistExitStrategyMap(item) {
+    const strategyExit = getLatestStrategyExit(item);
+    const strategies = strategyExit && strategyExit.strategies;
+    return strategies && typeof strategies === 'object' && !Array.isArray(strategies) ? strategies : {};
+}
+
+function getWatchlistStrategyOption(strategyMap, key) {
+    const strategy = strategyMap[key] || {};
+    const exitPrice = strategy.exit_price || {};
+    return { strategy, exitPrice };
+}
+
+function hasWatchlistExitPrice(option) {
+    const price = option?.exitPrice?.primary_price;
+    return price !== null && price !== undefined && price !== '' && Number.isFinite(Number(price));
+}
+
+function getDefaultWatchlistExitStrategy(item) {
+    const strategyMap = getWatchlistExitStrategyMap(item);
+    const priced = WATCHLIST_EXIT_STRATEGIES.find(entry => {
+        const option = getWatchlistStrategyOption(strategyMap, entry.key);
+        return hasWatchlistExitPrice(option);
+    });
+    return (priced || WATCHLIST_EXIT_STRATEGIES[0]).key;
+}
+
+function formatWatchlistExitPrice(value) {
+    if (value === null || value === undefined || value === '') return '--';
+    const num = Number(value);
+    if (!Number.isFinite(num)) return String(value);
+    return num.toFixed(3).replace(/\.?0+$/, '');
+}
+
+function renderWatchlistExitTool(item, code) {
+    if (!item || isEtfWatchlistItem(item)) return '';
+    const strategyExit = getLatestStrategyExit(item);
+    const costPrice = item.latest_cost_price ?? item.latestCostPrice ?? strategyExit?.position?.cost_price;
+    if (!strategyExit || !hasValidCostPrice(costPrice)) return '';
+
+    const safeCode = escapeHtml(code);
+    const selectedKey = getDefaultWatchlistExitStrategy(item);
+    const options = WATCHLIST_EXIT_STRATEGIES.map(entry =>
+        `<option value="${escapeHtml(entry.key)}" ${entry.key === selectedKey ? 'selected' : ''}>${escapeHtml(entry.name)}</option>`
+    ).join('');
+    return `
+        <div class="mt-3 rounded-lg border border-slate-700/80 bg-slate-950/35 p-3 watchlist-exit-tool" data-watch-code="${safeCode}">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                <div>
+                    <p class="text-xs font-semibold text-slate-200">策略卖点价</p>
+                    <p class="text-[11px] text-subtle">成本 ${escapeHtml(formatWatchlistExitPrice(costPrice))} · 随最近一次分析保存</p>
+                </div>
+                <select class="text-xs bg-card-light border border-theme rounded-lg px-2 py-1.5" onchange="updateWatchlistExitPrice('${safeCode}', this.value)">
+                    ${options}
+                </select>
+            </div>
+            <div id="watchlistExitPrice-${safeCode}"></div>
+        </div>
+    `;
+}
+
+function renderWatchlistExitPriceDetail(item, strategyKey) {
+    const strategyMap = getWatchlistExitStrategyMap(item);
+    const option = getWatchlistStrategyOption(strategyMap, strategyKey);
+    const strategy = option.strategy || {};
+    const exitPrice = option.exitPrice || {};
+    const strategyMeta = WATCHLIST_EXIT_STRATEGIES.find(entry => entry.key === strategyKey) || { name: strategy.name || strategyKey };
+    const priceText = formatWatchlistExitPrice(exitPrice.primary_price);
+    const risk = normalizeRiskValue(strategy.risk_level || strategy.risk || strategy.priority);
+    const riskText = risk === 'high' ? '高风险' : risk === 'medium' ? '中风险' : '低风险';
+    const riskClass = risk === 'high' ? 'text-red-300' : risk === 'medium' ? 'text-yellow-300' : 'text-green-300';
+    const status = exitPrice.current_status || (exitPrice.is_triggered ? '已触发' : '未触发');
+    const trigger = exitPrice.trigger_condition || '暂无触发条件';
+    const detail = exitPrice.detail || strategy.summary || '暂无更多细节';
+    const label = exitPrice.price_label || '暂无可计算卖点价';
+    const qlibNote = strategyKey === 'qlib_model'
+        ? '<p class="text-[11px] text-amber-300 mt-2">Qlib 仅作量化研究参考；该价格复用通用持仓风控，不代表 Qlib 自动卖出信号。</p>'
+        : '';
+    return `
+        <div class="rounded-md bg-accent/25 px-3 py-2">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <p class="text-[11px] text-subtle">${escapeHtml(strategyMeta.name)} · ${escapeHtml(label)}</p>
+                    <p class="text-lg font-semibold font-mono ${priceText === '--' ? 'text-subtle' : 'text-red-300'}">${escapeHtml(priceText)}</p>
+                </div>
+                <span class="strategy-pill ${riskClass}">${escapeHtml(riskText)}${strategy.risk_score != null ? ` · ${escapeHtml(strategy.risk_score)}` : ''}</span>
+            </div>
+            <p class="text-[11px] text-slate-300 mt-2">${escapeHtml(trigger)}</p>
+            <p class="text-[11px] text-subtle mt-1">${escapeHtml(status)}</p>
+            <p class="text-[11px] text-subtle mt-1 leading-relaxed">${escapeHtml(detail)}</p>
+            ${qlibNote}
+        </div>
+    `;
+}
+
+function updateWatchlistExitPrice(code, strategyKey) {
+    const item = state.watchlistItems && state.watchlistItems.get(String(code));
+    const target = document.getElementById(`watchlistExitPrice-${code}`);
+    if (!item || !target) return;
+    target.innerHTML = renderWatchlistExitPriceDetail(item, strategyKey);
+}
+
+function hydrateWatchlistExitTools(items) {
+    (items || []).forEach(item => {
+        const code = item.stock_code || item.code || '';
+        if (!code) return;
+        const target = document.getElementById(`watchlistExitPrice-${code}`);
+        if (!target) return;
+        updateWatchlistExitPrice(String(code), getDefaultWatchlistExitStrategy(item));
+    });
+}
+
+function setSectorHeatPills(elementId, data) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    el.innerHTML = renderSectorHeatPills(data, { className: 'flex flex-wrap gap-2 min-w-0' });
 }
 
 function formatTechnicalAction(value, fallbackText = '--') {
@@ -1141,6 +1939,259 @@ function buildTopSummary(summaryText, analysisText) {
     const chunkSize = compactSource.length > 120 ? 30 : compactSource.length > 60 ? 24 : 18;
     const chunks = compactSource.match(new RegExp(`.{1,${chunkSize}}`, 'g')) || [compactSource];
     return chunks.slice(0, 5).map(part => part.trim()).filter(Boolean).join('\n');
+}
+
+function formatScoreForDashboard(value) {
+    const text = pickDisplayValue(value);
+    if (!text) return '--';
+    const num = Number(text);
+    return Number.isFinite(num) ? String(Math.round(num)) : text;
+}
+
+function normalizeRiskValue(value) {
+    const text = String(value || '').toLowerCase();
+    if (text.includes('high') || text.includes('高') || text.includes('强')) return 'high';
+    if (text.includes('medium') || text.includes('mid') || text.includes('中') || text.includes('观察')) return 'medium';
+    return 'low';
+}
+
+function getDashboardFlowData(data) {
+    const fs = data.flow_signals || {};
+    const tm = data.flow_timing || data.timing || {};
+    const retail = data.retail_attention || {};
+    const trend = data.heat_trend || {};
+    const capital = data.capital_acceptance || {};
+    const leader = data.leader_position || data.flow_leadership || {};
+    const stage = data.cycle_stage || {};
+    const risk = data.risk_warning || {};
+    const sector = data.sector || {};
+
+    const sectorName = pickDisplayValue(data.sector_name, sector.name, fs.sector_name, data.industry);
+    const sectorHeat = pickDisplayValue(data.sector_heat, data.sector_heat_score, sector.heat_score, fs.sector_heat_score);
+    const retailScore = pickDisplayValue(retail.score, fs.retail_attention_score, data.external_heat_score);
+    const trendStart = pickDisplayValue(trend.start_score, trend.startScore);
+    const trendCurrent = pickDisplayValue(trend.current_score, trend.currentScore, retailScore);
+    const trendChange = pickDisplayValue(trend.change_score, trend.changeScore);
+    const capitalScore = pickDisplayValue(capital.score, fs.capital_acceptance_score, fs.capital_slope_score, data.capital_slope_score);
+    const stagePhase = pickDisplayValue(stage.phase, tm.phase);
+    const leaderLabel = pickDisplayValue(leader.leader_label, leader.leadership_level, leader.level);
+    const riskLabel = pickDisplayValue(risk.label, data.flow_recommendation, tm.risk_warning);
+    const direction = pickDisplayValue(retail.direction, stage.attention_direction, tm.attention_direction, fs.attention_direction);
+    const flowScore = pickDisplayValue(data.flow_total_score, fs.takeover_potential_score, fs.flow_score);
+    const riskDesc = pickDisplayValue(risk.desc, tm.exit_signal);
+    const stageDesc = pickDisplayValue(stage.desc, tm.phase_desc);
+    const leaderDesc = pickDisplayValue(leader.desc, leader.leadership_desc);
+    const keywordHits = normalizeKeywordHits(retail.keyword_hits, fs.keyword_hits, data.keyword_hits, data.hot_keywords);
+    const snowballHits = Array.isArray(retail.snowball_hits) ? retail.snowball_hits : (Array.isArray(fs.snowball_hits) ? fs.snowball_hits : []);
+
+    return {
+        sectorName,
+        sectorHeat,
+        retailScore,
+        trendStart,
+        trendCurrent,
+        trendChange,
+        capitalScore,
+        stagePhase,
+        leaderLabel,
+        riskLabel,
+        direction,
+        flowScore,
+        riskDesc,
+        stageDesc,
+        leaderDesc,
+        externalHeatScore: pickDisplayValue(fs.external_heat_score, data.external_heat_score, data.external_heat),
+        eastmoneyRankScore: pickDisplayValue(fs.eastmoney_rank_score),
+        eastmoneyHotRank: pickDisplayValue(retail.eastmoney_hot_rank, fs.eastmoney_hot_rank),
+        keywordHits,
+        snowballHits,
+        sourceLabels: Array.isArray(retail.source_labels) ? retail.source_labels : (Array.isArray(fs.source_labels) ? fs.source_labels : []),
+    };
+}
+
+function retailAttentionGuide(flow) {
+    const numText = (value) => {
+        const num = Number(value);
+        return Number.isFinite(num) ? String(Math.round(num)) : '--';
+    };
+    const clampScore = (value, fallback = 45) => {
+        const num = Number(value);
+        return Number.isFinite(num) ? Math.max(0, Math.min(100, num)) : fallback;
+    };
+    const external = clampScore(flow.externalHeatScore, 50);
+    const sector = clampScore(flow.sectorHeat, 50);
+    const eastmoney = clampScore(flow.eastmoneyRankScore, flow.eastmoneyHotRank ? 50 : 45);
+    const keywordCount = Array.isArray(flow.keywordHits) ? flow.keywordHits.length : 0;
+    const snowballCount = Array.isArray(flow.snowballHits) ? flow.snowballHits.length : 0;
+    const keyword = clampScore(45 + keywordCount * 8, 45);
+    const snowball = clampScore(45 + snowballCount * 12, 45);
+    const directAvailable = Boolean(flow.eastmoneyHotRank || keywordCount || snowballCount);
+    const rawScore = Math.round(external * 0.40 + sector * 0.24 + eastmoney * 0.16 + keyword * 0.10 + snowball * 0.10);
+    const finalScore = directAvailable ? rawScore : Math.round(rawScore * 0.84 + 42 * 0.16);
+    const trendText = flow.trendStart || flow.trendCurrent
+        ? `趋势：${numText(flow.trendStart || flow.retailScore)} → ${numText(flow.trendCurrent || flow.retailScore)}${flow.trendChange ? `（${Number(flow.trendChange) >= 0 ? '+' : ''}${numText(flow.trendChange)}）` : ''}，这是按热度趋势/加速度反推的近5日代理变化。`
+        : '趋势：暂无可用起点，只展示当前代理热度。';
+    const sourceText = flow.sourceLabels && flow.sourceLabels.length
+        ? `当前数据口径：${flow.sourceLabels.slice(0, 4).join('；')}。`
+        : '当前数据口径：外部讨论直接数据不足，主要用板块排行、东财代理和本地降级分。';
+    const degradeText = directAvailable
+        ? '当前有直接外部代理数据，未做低置信底分回拉。'
+        : '因股吧/雪球/东财直接命中不足，最终分 = 原始分×84% + 中性底分42×16%，避免把缺数据误判成高热。';
+    return [
+        '散户热度 = 外部讨论热度40% + 板块热度24% + 东财人气16% + 热门关键词10% + 雪球命中10%。',
+        `本次拆分：外部讨论${numText(external)}×40% + 板块${numText(sector)}×24% + 东财人气${numText(eastmoney)}×16% + 关键词${numText(keyword)}×10% + 雪球${numText(snowball)}×10% = 原始${numText(rawScore)}，最终${numText(finalScore)}。`,
+        `关键词命中${keywordCount}个，雪球命中${snowballCount}条。${flow.eastmoneyHotRank ? `东财人气排名 ${flow.eastmoneyHotRank}。` : '东财人气排名暂无。'}`,
+        trendText,
+        degradeText,
+        sourceText
+    ].join('\n');
+}
+
+function hasHoldingContext(data) {
+    const strategyExit = data.strategy_exit || {};
+    const position = strategyExit.position || {};
+    const costPrice = data.cost_price ?? position.cost_price;
+    const buyDate = data.buy_date ?? strategyExit.buy_date ?? position.buy_date ?? position.buy_trade_date;
+    return Boolean((Number(costPrice) > 0) || buyDate);
+}
+
+function compactDecisionLabel(data) {
+    const recommendation = String(data.recommendation || '').trim();
+    const holding = hasHoldingContext(data);
+    if (holding) {
+        if (recommendation === '强烈卖出') return '退出';
+        if (recommendation === '卖出') return '减仓';
+        return '持有';
+    }
+    if (recommendation === '强烈买入' || recommendation === '买入') return '关注';
+    if (recommendation === '卖出' || recommendation === '强烈卖出') return '回避';
+    return '等待';
+}
+
+function compactTrendEvidence(data) {
+    const trend = data.trend || {};
+    const short = trend.short || {};
+    const direction = String(short.direction || '').toLowerCase();
+    let label = '震荡';
+    if (direction.includes('up') || direction.includes('上升')) label = '转强';
+    else if (direction.includes('down') || direction.includes('下降')) label = '转弱';
+    return {
+        label,
+        note: short.desc || trend.summary || '短期趋势数据不足',
+    };
+}
+
+function compactFlowEvidence(flow) {
+    const riskLabel = String(flow.riskLabel || '');
+    const direction = String(flow.direction || '');
+    const stage = String(flow.stagePhase || '');
+    let label = stage || direction || '待确认';
+    if (/退潮/.test(riskLabel)) label = '退潮';
+    else if (/高潮|分歧/.test(riskLabel)) label = '分歧';
+    else if (/升温|上升|流入/.test(direction)) label = '升温';
+    const noteParts = [
+        flow.sectorName ? `${flow.sectorName}` : '',
+        flow.capitalScore ? `承接 ${formatScoreForDashboard(flow.capitalScore)}` : '',
+    ].filter(Boolean);
+    return {
+        label,
+        note: noteParts.join(' · ') || flow.stageDesc || '资金与热度数据不足',
+    };
+}
+
+function compactRiskEvidence(data, flow) {
+    const strategyExit = data.strategy_exit || {};
+    const riskKey = normalizeRiskValue(strategyExit.risk_level || flow.riskLabel);
+    const labels = { high: '高', medium: '中', low: '低' };
+    const score = strategyExit.risk_score;
+    return {
+        label: labels[riskKey] || '低',
+        note: score !== null && score !== undefined ? `策略风控 ${Math.round(Number(score) || 0)}分` : '策略风控暂无评分',
+    };
+}
+
+function pickDecisionTrigger(data, flow) {
+    const strategyExit = data.strategy_exit || {};
+    const priority = { high: 0, medium: 1, support: 2 };
+    const signals = [];
+    if (Array.isArray(strategyExit.signals)) signals.push(...strategyExit.signals);
+    const strategies = strategyExit.strategies && typeof strategyExit.strategies === 'object'
+        ? Object.values(strategyExit.strategies)
+        : [];
+    strategies.forEach(strategy => {
+        if (strategy && Array.isArray(strategy.signals)) signals.push(...strategy.signals);
+    });
+    const activeSignal = signals
+        .filter(signal => signal && signal.executable !== false)
+        .sort((a, b) => (priority[a.priority] ?? 9) - (priority[b.priority] ?? 9))[0];
+    if (activeSignal) {
+        return activeSignal.detail || activeSignal.reason || activeSignal.title || '命中策略风控条件，需要重新评估。';
+    }
+    if (flow.riskDesc) return flow.riskDesc;
+    const stopLoss = data.action && data.action.stop_loss;
+    if (stopLoss !== null && stopLoss !== undefined && String(stopLoss).trim() && String(stopLoss) !== '--') {
+        return `若价格跌破 ${stopLoss}，重新评估当前结论。`;
+    }
+    return '趋势、资金热度或策略风险发生明显变化时，重新评估当前结论。';
+}
+
+function renderThemeDashboard(data) {
+    const card = document.getElementById('themeDashboardCard');
+    if (!card) return;
+    const flow = getDashboardFlowData(data);
+    const trendEvidence = compactTrendEvidence(data);
+    const flowEvidence = compactFlowEvidence(flow);
+    const riskEvidence = compactRiskEvidence(data, flow);
+    const holding = hasHoldingContext(data);
+
+    setTextById('dashboardVerdict', compactDecisionLabel(data));
+    setTextById('dashboardRiskLine', '仅供研究参考，不构成投资建议。');
+    setTextById('dashboardOneLine', `当前按${holding ? '持仓' : '未持仓研究'}场景展示；其他模型输出已收进研究详情。`);
+    setTextById('dashboardTrendEvidence', trendEvidence.label);
+    setTextById('dashboardTrendNote', trendEvidence.note);
+    setTextById('dashboardFlowEvidence', flowEvidence.label);
+    setTextById('dashboardFlowNote', flowEvidence.note);
+    setTextById('dashboardRiskEvidence', riskEvidence.label);
+    setTextById('dashboardRiskNote', riskEvidence.note);
+    setTextById('dashboardKeyTrigger', pickDecisionTrigger(data, flow));
+
+    const strategyExit = data.strategy_exit || {};
+    const riskClass = flowRiskClass(strategyExit.risk_level || flow.riskLabel, strategyExit.risk_score || 0);
+    card.className = `card dashboard-hero fade-in ${riskClass}`.trim();
+    card.style.display = 'block';
+}
+
+function arrangeAnalysisSections() {
+    const root = document.getElementById('analysisResult');
+    const researchDetails = document.getElementById('researchDetails');
+    const researchContent = document.getElementById('researchDetailsContent');
+    if (!root || !researchDetails || !researchContent) return;
+    [
+        'stockOverviewGrid',
+        'flowCard',
+        'strategyExitCard',
+        'trendCard',
+        'keyLevelsCard',
+        'signalsCard',
+        'actionCard',
+        'analysisSummaryCard',
+        'detailedReportCard',
+        'indicatorValuesCard',
+        'technicalChartsGrid',
+    ].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) researchContent.appendChild(el);
+    });
+    [
+        'themeDashboardCard',
+        'klineChartCard',
+        'researchDetails',
+        'historyCard',
+    ].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) root.appendChild(el);
+    });
+    researchDetails.open = false;
 }
 
 // ===================== K-LINE CHART =====================
@@ -1556,6 +2607,351 @@ function renderBOLL(dates, klineData, bollResult) {
 
 // ===================== INDICATOR VALUES =====================
 // ===================== ENHANCED ANALYSIS CARDS =====================
+function setTextById(id, value, fallback = '--') {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = normalizeDisplayValue(value) || fallback;
+}
+
+function formatPercentValue(value) {
+    if (value === null || value === undefined || value === '') return '--';
+    const num = Number(value);
+    if (Number.isFinite(num)) return `${num >= 0 ? '+' : ''}${num}%`;
+    return normalizeDisplayValue(value) || '--';
+}
+
+function formatSuffixValue(value, suffix) {
+    if (value === null || value === undefined || value === '') return '--';
+    const text = normalizeDisplayValue(value);
+    if (!text) return '--';
+    return text.endsWith(suffix) ? text : `${text}${suffix}`;
+}
+
+function resetFlowCard() {
+    const card = document.getElementById('flowCard');
+    if (card) card.style.display = 'none';
+    [
+        'flowScoreValue',
+        'flowRecommendation',
+        'flowModelVersion',
+        'flowModelNote',
+        'flowDirection',
+        'flowSourceSummary',
+        'flowPhaseBadge',
+        'flowPhaseDesc',
+        'flowVolumeBurst',
+        'flowPriceMomentum',
+        'flowVolatility',
+        'flowUpDays',
+        'flowNameRecognition',
+        'flowSectorHeat',
+        'flowExternalHeat',
+        'flowGubaStatus',
+        'flowXueqiuStatus',
+        'flowDouyinStatus',
+        'flowTrendScore',
+        'flowTrendConfidence',
+        'flowCapitalSlope',
+        'flowCapitalDesc',
+        'flowCapitalHelpText',
+        'flowCapitalNote',
+        'flowLeaderLabel',
+        'flowLeadershipDesc',
+        'flowRankingStatus',
+        'flowExitRisk',
+        'flowTimingAdvice',
+        'flowExitSignal',
+        'flowDataWarnings'
+    ].forEach(id => setTextById(id, '', ''));
+    const scoreBar = document.getElementById('flowScoreBar');
+    if (scoreBar) scoreBar.style.width = '0%';
+    const sourceTags = document.getElementById('flowSourceTags');
+    if (sourceTags) sourceTags.innerHTML = '';
+    const discussionLinks = document.getElementById('flowDiscussionLinks');
+    if (discussionLinks) discussionLinks.innerHTML = '';
+    const trendVisual = document.getElementById('flowTrendVisual');
+    if (trendVisual) trendVisual.innerHTML = '';
+    const riskPanel = document.getElementById('flowRiskPanel');
+    if (riskPanel) riskPanel.className = 'flow-panel';
+}
+
+function getFlowField(data, fs, tm, ld, paths) {
+    return pickDisplayValue(...paths.map(path => {
+        if (path.startsWith('fs.')) return getNestedValue(fs, path.slice(3));
+        if (path.startsWith('tm.')) return getNestedValue(tm, path.slice(3));
+        if (path.startsWith('ld.')) return getNestedValue(ld, path.slice(3));
+        return getNestedValue(data, path);
+    }));
+}
+
+function scoreText(value) {
+    const text = normalizeDisplayValue(value);
+    if (!text) return '--';
+    const num = Number(text);
+    return Number.isFinite(num) ? String(Math.round(num)) : text;
+}
+
+function clampNumber(value, min = 0, max = 100) {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return min;
+    return Math.max(min, Math.min(max, num));
+}
+
+function renderTrendVisual(trendHeat, fallbackScore) {
+    const current = clampNumber(pickDisplayValue(trendHeat.current_score, trendHeat.currentScore, fallbackScore), 0, 100);
+    const rawStart = pickDisplayValue(trendHeat.start_score, trendHeat.startScore);
+    const start = rawStart ? clampNumber(rawStart, 0, 100) : clampNumber(current - (Number(trendHeat.change_score ?? trendHeat.changeScore) || 0), 0, 100);
+    const change = Math.round(current - start);
+    const points = Array.isArray(trendHeat.points) && trendHeat.points.length >= 2
+        ? trendHeat.points.map(point => clampNumber(point, 0, 100)).slice(0, 8)
+        : [start, Math.round((start + current) / 2), current];
+    const width = 160;
+    const height = 34;
+    const denom = Math.max(points.length - 1, 1);
+    const coords = points.map((point, index) => ({
+        x: Math.round((index / denom) * width),
+        y: Math.round(height - (point / 100) * (height - 6) - 3),
+    }));
+    const path = coords.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.y}`).join(' ');
+    const minPos = Math.min(start, current);
+    const rangeWidth = Math.max(2, Math.abs(current - start));
+    const changeClass = change > 0 ? 'text-red-300' : change < 0 ? 'text-green-300' : 'text-subtle';
+    const changeText = `${change >= 0 ? '+' : ''}${change}`;
+    const basis = normalizeDisplayValue(trendHeat.basis) || '代理热度';
+    const windowText = normalizeDisplayValue(trendHeat.window) || '5d';
+    const proxyText = trendHeat.is_proxy === false ? '' : ' · 代理';
+
+    return `
+        <div class="flex items-center justify-between gap-3 mb-2">
+            <div class="min-w-0">
+                <p class="text-[11px] text-subtle">${escapeHtml(windowText)} ${escapeHtml(basis)}${proxyText}</p>
+                <p class="text-sm font-semibold mt-0.5">
+                    <span class="font-mono">${Math.round(start)}</span>
+                    <span class="text-subtle mx-1">→</span>
+                    <span class="font-mono text-accent">${Math.round(current)}</span>
+                </p>
+            </div>
+            <div class="text-right shrink-0">
+                <p class="text-[11px] text-subtle">变化</p>
+                <p class="text-sm font-mono font-bold ${changeClass}">${changeText}</p>
+            </div>
+        </div>
+        <div class="flow-trend-rail" aria-label="热度从${Math.round(start)}到${Math.round(current)}">
+            <span class="flow-trend-range" style="left:${minPos}%;width:${rangeWidth}%;"></span>
+            <span class="flow-trend-marker" style="left:${start}%;"></span>
+            <span class="flow-trend-marker" style="left:${current}%;"></span>
+        </div>
+        <svg class="flow-sparkline mt-2" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">
+            <path d="${path}"></path>
+            <circle cx="${coords[0].x}" cy="${coords[0].y}" r="2.8"></circle>
+            <circle cx="${coords[coords.length - 1].x}" cy="${coords[coords.length - 1].y}" r="3.2"></circle>
+        </svg>
+    `;
+}
+
+function flowStatusText(status) {
+    const text = normalizeDisplayValue(status);
+    const map = {
+        unavailable: '未接入',
+        proxy_available: '代理可用',
+        proxy_by_eastmoney_hot_rank: '东财代理',
+        fallback_used: '代理参与',
+        partial: '部分可用',
+        ok: '可用',
+        degraded: '降级'
+    };
+    return map[text] || text || '--';
+}
+
+function renderFlowAvailableSources(retail, fs, flowStatus) {
+    const rawSources = Array.isArray(retail?.available_sources) ? retail.available_sources
+        : Array.isArray(retail?.calculation_sources) ? retail.calculation_sources
+        : Array.isArray(fs?.available_sources) ? fs.available_sources
+        : Array.isArray(fs?.calculation_sources) ? fs.calculation_sources
+        : Array.isArray(flowStatus?.calculation_sources) ? flowStatus.calculation_sources
+        : [];
+    const seen = new Set();
+    const sources = rawSources
+        .filter(source => source && typeof source === 'object')
+        .map(source => ({
+            key: normalizeDisplayValue(source.key || source.label),
+            label: normalizeDisplayValue(source.label || source.key),
+            score: source.score,
+            status: normalizeDisplayValue(source.status || 'ok')
+        }))
+        .filter(source => {
+            const key = source.key || source.label;
+            if (!key || seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+    if (!sources.length) {
+        return '<span class="flow-status-pill text-subtle">等待可用源回传</span>';
+    }
+    return sources.map(source => {
+        const score = Number(source.score);
+        const scoreText = Number.isFinite(score) ? ` · ${Math.round(score)}` : '';
+        const cls = source.status === 'fallback' ? 'heat-pill' : '';
+        return `<span class="flow-status-pill ${cls}">${escapeHtml(source.label)}${scoreText}<span class="ml-1 opacity-75">${source.status === 'fallback' ? '参与计算' : '接通'}</span></span>`;
+    }).join('');
+}
+
+function flowRiskClass(label, score) {
+    const text = String(label || '');
+    const num = Number(score);
+    if (text.includes('退潮') || text.includes('高潮') || (Number.isFinite(num) && num >= 75)) return 'flow-risk-high';
+    if (text.includes('分歧') || (Number.isFinite(num) && num >= 55)) return 'flow-risk-mid';
+    return 'flow-risk-low';
+}
+
+function setFlowPill(id, value, extraClass = '') {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = normalizeDisplayValue(value) || '--';
+    el.className = `flow-status-pill ${extraClass}`.trim();
+}
+
+function capitalAcceptanceGuide(capitalScore, volumeBurst, source) {
+    const score = Number(capitalScore);
+    const volume = Number(volumeBurst);
+    let current = '当前量能数据不足，先看成交额、资金流和板块内跟随数量是否同步改善。';
+    if (Number.isFinite(volume)) {
+        if (volume < 0.8) current = `当前量能 ${volume.toFixed(2)}倍，低于近期均量，承接偏弱，新增资金没有明显放大。`;
+        else if (volume < 1.2) current = `当前量能 ${volume.toFixed(2)}倍，接近近期均量，属于中性偏弱，还不能证明强承接。`;
+        else if (volume < 1.5) current = `当前量能 ${volume.toFixed(2)}倍，开始放大，有承接迹象，但需要热度和板块跟随确认。`;
+        else if (volume < 2) current = `当前量能 ${volume.toFixed(2)}倍，承接较强，说明新增资金进入速度明显变快。`;
+        else current = `当前量能 ${volume.toFixed(2)}倍，承接很强，但若外部热度也极高，要警惕高潮或分歧。`;
+    }
+
+    let scoreLine = '承接分看成交/资金斜率、量能放大和热度趋势的组合。';
+    if (Number.isFinite(score)) {
+        if (score >= 75) scoreLine = `承接分 ${Math.round(score)}：偏强，可支持题材继续扩散，但高热时要看是否加速过头。`;
+        else if (score >= 60) scoreLine = `承接分 ${Math.round(score)}：中等偏强，有承接，但还需要板块内更多个股跟随。`;
+        else if (score >= 45) scoreLine = `承接分 ${Math.round(score)}：中性，能不能接住还不确定，适合继续观察。`;
+        else scoreLine = `承接分 ${Math.round(score)}：偏弱，热度如果很高反而容易形成分歧风险。`;
+    }
+
+    const sourceText = normalizeDisplayValue(source) || '成交额/量能代理';
+    return [
+        current,
+        '经验阈值：<0.8倍偏弱，0.8-1.2倍中性，1.2-1.5倍开始放大，1.5-2倍较强，>2倍很强但也可能进入高潮。',
+        scoreLine,
+        `当前口径：${sourceText}。`
+    ].join('\n');
+}
+
+function normalizeKeywordHits(...sources) {
+    const seen = new Set();
+    const keywords = [];
+    sources.forEach(source => {
+        if (!Array.isArray(source)) return;
+        source.forEach(item => {
+            const rawKeyword = typeof item === 'string'
+                ? item
+                : (item && (item.keyword || item.name || item.title || item.label || item.concept));
+            const keyword = normalizeDisplayValue(rawKeyword);
+            if (!keyword || seen.has(keyword)) return;
+            seen.add(keyword);
+            keywords.push({
+                keyword,
+                source: typeof item === 'object' && item ? normalizeDisplayValue(item.source || item.platform || item.provider) : '',
+                rank: typeof item === 'object' && item ? normalizeDisplayValue(item.rank || item.hot_rank || item.index) : '',
+                score: typeof item === 'object' && item ? normalizeDisplayValue(item.score || item.heat || item.value) : '',
+            });
+        });
+    });
+    return keywords;
+}
+
+function renderKeywordHitsPanel(keywords) {
+    if (!keywords.length) {
+        return `
+            <div id="flowKeywordsPanel" class="flow-keyword-panel text-xs text-subtle" style="display:none;">
+                暂无关键词明细，当前只拿到了“命中数量”这个代理信号。
+            </div>
+        `;
+    }
+    return `
+        <div id="flowKeywordsPanel" class="flow-keyword-panel" style="display:none;">
+            <div class="flex items-center justify-between gap-2 mb-2">
+                <span class="text-[11px] text-subtle">东财/股吧代理关键词</span>
+                <span class="text-[11px] text-subtle">${keywords.length} 个</span>
+            </div>
+            <div class="flow-source-list">
+                ${keywords.map(item => {
+                    const metaParts = [
+                        item.rank ? `#${escapeHtml(item.rank)}` : '',
+                        item.score ? `热度${escapeHtml(item.score)}` : '',
+                        item.source ? escapeHtml(item.source) : '',
+                    ].filter(Boolean);
+                    return `
+                        <span class="flow-keyword-chip">
+                            ${escapeHtml(item.keyword)}
+                            ${metaParts.length ? `<span class="flow-keyword-meta">${metaParts.join(' · ')}</span>` : ''}
+                        </span>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `;
+}
+
+function renderFlowSourceTags(sourceLabels, keywords) {
+    const labels = Array.isArray(sourceLabels) ? sourceLabels : [];
+    const parts = [];
+    let hasKeywordLabel = false;
+    labels.slice(0, 5).forEach(label => {
+        const text = normalizeDisplayValue(label);
+        if (!text) return;
+        if (/热门关键词/.test(text)) {
+            hasKeywordLabel = true;
+            const count = keywords.length || (text.match(/\d+/)?.[0] || '');
+            parts.push(`<button type="button" id="flowKeywordToggle" class="flow-status-pill flow-keyword-toggle" aria-expanded="false">${escapeHtml(count ? `热门关键词 ${count}个` : text)} <span aria-hidden="true">展开</span></button>`);
+            return;
+        }
+        parts.push(`<span class="flow-status-pill text-subtle">${escapeHtml(text)}</span>`);
+    });
+    if (!hasKeywordLabel && keywords.length) {
+        parts.push(`<button type="button" id="flowKeywordToggle" class="flow-status-pill flow-keyword-toggle" aria-expanded="false">热门关键词 ${keywords.length}个 <span aria-hidden="true">展开</span></button>`);
+    }
+    if (!parts.length) parts.push('<span class="flow-status-pill text-subtle">东财/雪球代理不足</span>');
+    if (hasKeywordLabel || keywords.length) parts.push(renderKeywordHitsPanel(keywords));
+    return parts.join('');
+}
+
+function toggleFlowKeywords() {
+    const panel = document.getElementById('flowKeywordsPanel');
+    const toggle = document.getElementById('flowKeywordToggle');
+    if (!panel || !toggle) return;
+    const willOpen = panel.style.display === 'none' || !panel.style.display;
+    panel.style.display = willOpen ? 'block' : 'none';
+    toggle.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+    const suffix = toggle.querySelector('span[aria-hidden="true"]');
+    if (suffix) suffix.textContent = willOpen ? '收起' : '展开';
+}
+
+function toggleCapitalHelp(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    const wrap = event && event.currentTarget ? event.currentTarget.closest('.flow-help-wrap') : document.querySelector('.flow-help-wrap');
+    if (!wrap) return;
+    const open = !wrap.classList.contains('flow-help-open');
+    document.querySelectorAll('.flow-help-wrap.flow-help-open').forEach(el => el.classList.remove('flow-help-open'));
+    if (open) wrap.classList.add('flow-help-open');
+}
+
+document.addEventListener('click', (event) => {
+    const toggle = event.target && event.target.closest ? event.target.closest('#flowKeywordToggle') : null;
+    if (toggle) {
+        event.preventDefault();
+        toggleFlowKeywords();
+        return;
+    }
+    document.querySelectorAll('.flow-help-wrap.flow-help-open').forEach(el => el.classList.remove('flow-help-open'));
+});
+
 function renderEnhancedCards(data) {
     // --- Trend Card ---
     const trend = data.trend;
@@ -1627,6 +3023,14 @@ function renderEnhancedCards(data) {
         document.getElementById('actTakeProfit').textContent = act.take_profit || '--';
         document.getElementById('actPeriod').textContent = act.period || '--';
         document.getElementById('actRiskLevel').textContent = act.risk_level || '--';
+        const finalBadge = document.getElementById('actFinalBadge');
+        const finalRecommendation = data.recommendation || act.operation || '--';
+        finalBadge.textContent = `底层 ${finalRecommendation}`;
+        finalBadge.className = `strategy-pill font-medium ${
+            String(finalRecommendation).includes('卖') || String(finalRecommendation).includes('减') ? 'text-red-300' :
+            String(finalRecommendation).includes('买') || String(finalRecommendation).includes('加') ? 'text-green-300' :
+            'text-yellow-300'
+        }`;
 
         // Color operation based on signal
         const opEl = document.getElementById('actOperation');
@@ -1651,11 +3055,12 @@ function renderEnhancedCards(data) {
             ? `策略调整：综合建议已由${data.base_recommendation || technicalAction || '--'}调整为${data.recommendation || '--'}。`
             : '策略调整：暂无策略卖点调整。';
         const positionSource = act.position
-            ? `半仓/仓位来源：${act.position}来自技术面原始建议，综合建议会叠加策略卖点风险调整。`
+            ? `仓位来源：${act.position}来自技术面参考，遇到策略卖点、流量退潮或外部热度过热时需要下调。`
             : '';
         const basisLines = [
             actionBasis ? `依据：${actionBasis}` : '',
             positionSource,
+            `页面唯一结论位于顶部；这里仅保留技术层计算依据。`,
             adjustmentText
         ].filter(Boolean);
         const basisBlock = document.getElementById('actionBasisBlock');
@@ -1666,54 +3071,113 @@ function renderEnhancedCards(data) {
     }
 
     // --- Flow Analysis Card ---
+    resetFlowCard();
     const fs = data.flow_signals;
     const tm = data.flow_timing;
     const ld = data.flow_leadership;
-    if (fs && tm && ld) {
-        const flowScore = data.flow_total_score || 0;
-        // Score circle
-        document.getElementById('flowScoreValue').textContent = flowScore;
-        const flowDeg = Math.min((flowScore / 100) * 360, 360);
-        const flowColor = flowScore >= 70 ? '#22c55e' : flowScore >= 45 ? '#eab308' : '#ef4444';
-        document.getElementById('flowScoreCircle').style.background = `conic-gradient(${flowColor} ${flowDeg}deg, #1a2754 ${flowDeg}deg)`;
-        // Recommendation
-        const rec = data.flow_recommendation || '--';
-        const recEl = document.getElementById('flowRecommendation');
-        recEl.textContent = rec;
-        if (rec === '重点关注') recEl.className = 'text-xs mt-2 font-medium text-green-400';
-        else if (rec === '可参与') recEl.className = 'text-xs mt-2 font-medium text-yellow-400';
-        else if (rec === '观望') recEl.className = 'text-xs mt-2 font-medium text-orange-400';
-        else recEl.className = 'text-xs mt-2 font-medium text-red-400';
-        // Phase
-        const phaseColors = { '启动': '#3b82f6', '加速': '#22c55e', '分歧': '#eab308', '退潮': '#ef4444' };
+    const model = data.flow_model || {};
+    const retail = data.retail_attention || {};
+    const topic = data.topic_conversion || {};
+    const capital = data.capital_acceptance || {};
+    const trendHeat = data.heat_trend || {};
+    const leaderPos = data.leader_position || {};
+    const stage = data.cycle_stage || {};
+    const risk = data.risk_warning || {};
+    const flowStatus = data.flow_data_status || data.flow_status || {};
+    const sectorHeat = getFlowField(data, fs, tm, ld, ['sector_heat', 'sectorHeat', 'sector.heat_score', 'fs.sector_heat_score', 'fs.sector_heat']);
+    const retailScore = pickDisplayValue(retail.score, fs && fs.retail_attention_score, data.external_heat_score, data.external_heat);
+    const capitalScore = pickDisplayValue(capital.score, fs && fs.capital_acceptance_score, fs && fs.capital_slope_score, data.capital_slope_score);
+    const trendScore = pickDisplayValue(trendHeat.score, fs && fs.heat_trend_score, fs && fs.heat_acceleration_score, data.heat_acceleration_score);
+    const leaderLabel = pickDisplayValue(leaderPos.leader_label, ld && ld.leader_label, ld && ld.leadership_level);
+    const riskLabel = pickDisplayValue(risk.label, data.flow_recommendation, tm && tm.risk_warning);
+    const exitRisk = pickDisplayValue(risk.score, fs && fs.exit_risk_score, data.exit_risk_score);
+    const hasFlowData = Boolean(model.version || retail.score || topic.score || capital.score || stage.phase || fs || tm || ld || data.flow_total_score || data.flow_recommendation);
+    if (hasFlowData) {
+        const flowScore = Number(data.flow_total_score ?? fs?.takeover_potential_score ?? fs?.flow_score ?? 0);
+        document.getElementById('flowScoreValue').textContent = Number.isFinite(flowScore) ? Math.round(flowScore) : '--';
+        const scoreBar = document.getElementById('flowScoreBar');
+        if (scoreBar) {
+            const pct = Number.isFinite(flowScore) ? Math.max(0, Math.min(100, flowScore)) : 0;
+            scoreBar.style.width = `${pct}%`;
+        }
+
+        const riskClass = flowRiskClass(riskLabel, exitRisk);
+        setFlowPill('flowRecommendation', riskLabel || '低位升温', riskClass);
+        setFlowPill('flowModelVersion', model.version || 'retail_attention_v2', 'text-subtle');
+        setTextById('flowModelNote', model.note || '接盘资金潜力 = 散户讨论流量 × 题材转化率 × 资金承接能力');
+
+        const direction = pickDisplayValue(retail.direction, stage.attention_direction, tm && tm.attention_direction, fs && fs.attention_direction);
+        setTextById('flowDirection', direction || '--');
+        const sourceLabels = Array.isArray(retail.source_labels) ? retail.source_labels : (Array.isArray(fs && fs.source_labels) ? fs.source_labels : []);
+        const keywordHits = normalizeKeywordHits(retail.keyword_hits, fs?.keyword_hits, data.keyword_hits, data.hot_keywords);
+        setTextById('flowSourceSummary', sourceLabels.length ? sourceLabels.slice(0, 2).join('；') : '外部讨论代理数据不足');
+
+        const phaseColors = { '冷启动': '#60a5fa', '启动': '#3b82f6', '扩散': '#22c55e', '高潮': '#f97316', '分歧': '#eab308', '退潮': '#ef4444' };
         const phaseBadge = document.getElementById('flowPhaseBadge');
-        phaseBadge.textContent = tm.phase + '期';
-        phaseBadge.style.color = phaseColors[tm.phase] || '#e2e8f0';
-        phaseBadge.style.background = (phaseColors[tm.phase] || '#4a9eff') + '22';
-        document.getElementById('flowPhaseDesc').textContent = tm.phase_desc || '--';
-        // Volume burst
-        document.getElementById('flowVolumeBurst').textContent = fs.volume_burst;
-        const burstPct = Math.min((fs.volume_burst / 3.0) * 100, 100);
-        document.getElementById('flowVolumeBar').style.width = burstPct + '%';
-        document.getElementById('flowVolumeDesc').textContent = fs.flow_phase || '--';
-        // Leadership
-        document.getElementById('flowLeadershipScore').textContent = ld.leadership_score;
-        const ldLevelEl = document.getElementById('flowLeadershipLevel');
-        ldLevelEl.textContent = ld.leadership_level;
-        if (ld.leadership_score >= 65) ldLevelEl.className = 'text-sm font-medium mb-1 text-green-400';
-        else if (ld.leadership_score >= 45) ldLevelEl.className = 'text-sm font-medium mb-1 text-yellow-400';
-        else ldLevelEl.className = 'text-sm font-medium mb-1 text-red-400';
-        document.getElementById('flowLeadershipDesc').textContent = ld.leadership_desc || '--';
-        // Detail indicators
+        const phase = normalizeDisplayValue(stage.phase || tm?.phase);
+        phaseBadge.textContent = phase || '--';
+        phaseBadge.style.color = phaseColors[phase] || '#e2e8f0';
+        phaseBadge.style.background = (phaseColors[phase] || '#4a9eff') + '22';
+        document.getElementById('flowPhaseDesc').textContent = normalizeDisplayValue(stage.desc || tm?.phase_desc) || '--';
+
+        const riskPanel = document.getElementById('flowRiskPanel');
+        if (riskPanel) riskPanel.className = `flow-panel ${riskClass}`;
+        setTextById('flowExitRisk', riskLabel || '--');
+        setTextById('flowExitSignal', risk.desc || tm?.exit_signal || '--');
+
+        setFlowPill('flowExternalHeat', `热度 ${scoreText(retailScore)}`);
+        const availableSources = document.getElementById('flowAvailableSources');
+        if (availableSources) availableSources.innerHTML = renderFlowAvailableSources(retail, fs, flowStatus);
+        setTextById('flowGubaStatus', `股吧/东财 ${flowStatusText(retail.guba_status || flowStatus.guba_status || fs?.eastmoney_guba_status)}`);
+        setTextById('flowXueqiuStatus', `雪球 ${flowStatusText(retail.xueqiu_status || flowStatus.xueqiu_status || fs?.xueqiu_status)}`);
+        setTextById('flowDouyinStatus', `抖音 ${flowStatusText(retail.douyin_status || flowStatus.douyin_status || fs?.douyin_status || 'unavailable')}`);
+        const sourceTags = document.getElementById('flowSourceTags');
+        if (sourceTags) {
+            sourceTags.innerHTML = renderFlowSourceTags(sourceLabels, keywordHits);
+        }
+        const discussionLinks = document.getElementById('flowDiscussionLinks');
+        if (discussionLinks) {
+            const links = buildDiscussionLinks(data, retail);
+            discussionLinks.innerHTML = links.length
+                ? links.map(link => `<a class="flow-link-pill" href="${escapeHtml(link.href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(link.label)}</a>`).join('')
+                : '<span class="flow-status-pill text-subtle">暂无可跳转讨论入口</span>';
+        }
+
+        setFlowPill('flowTrendScore', `趋势 ${scoreText(trendScore)}`);
+        const trendVisual = document.getElementById('flowTrendVisual');
+        if (trendVisual) trendVisual.innerHTML = renderTrendVisual(trendHeat, trendScore);
+        setTextById('flowTimingAdvice', tm?.hold_advice || stage.desc || '--');
+        setTextById('flowTrendConfidence', trendHeat.confidence !== undefined ? `置信度 ${trendHeat.confidence} · ${trendHeat.source || ''}` : (flowStatus.confidence !== undefined ? `置信度 ${flowStatus.confidence}` : '--'));
+
+        setFlowPill('flowCapitalSlope', `承接 ${scoreText(capitalScore)}`);
+        const capBits = [
+            capital.source || fs?.capital_proxy_source || '成交额代理',
+            capital.amount_proxy_ratio ? `成交额比 ${capital.amount_proxy_ratio}` : '',
+            capital.volume_burst ? `量能 ${capital.volume_burst}倍` : ''
+        ].filter(Boolean);
+        setTextById('flowCapitalDesc', capBits.join('；') || '--');
+        setTextById('flowCapitalHelpText', capitalAcceptanceGuide(capitalScore, capital.volume_burst || fs?.volume_burst, capital.source || fs?.capital_proxy_source));
+        setTextById('flowCapitalNote', '观察新增接盘资金是否持续进入；低热度时看放量启动，高热度时看承接是否失速。');
+
+        setFlowPill('flowLeaderLabel', leaderLabel || '--');
+        setTextById('flowLeadershipDesc', leaderPos.desc || ld?.leadership_desc || '--');
+        setTextById('flowRankingStatus', leaderPos.ranking_status || ld?.ranking_status || ld?.rank_hint || '--');
+
+        document.getElementById('flowVolumeBurst').textContent = formatSuffixValue(fs && fs.volume_burst, '倍');
         const pmEl = document.getElementById('flowPriceMomentum');
-        pmEl.textContent = (fs.price_momentum >= 0 ? '+' : '') + fs.price_momentum + '%';
-        pmEl.className = 'text-sm font-mono font-medium ' + (fs.price_momentum >= 0 ? 'text-red-400' : 'text-green-400');
-        document.getElementById('flowVolatility').textContent = fs.volatility + '%';
-        document.getElementById('flowUpDays').textContent = fs.up_days + '天';
-        document.getElementById('flowNameRecognition').textContent = ld.name_recognition || '--';
-        // Timing advice
-        document.getElementById('flowTimingAdvice').textContent = tm.hold_advice || '--';
-        document.getElementById('flowExitSignal').textContent = tm.exit_signal || '--';
+        const priceMomentum = Number(fs && fs.price_momentum);
+        pmEl.textContent = formatPercentValue(fs && fs.price_momentum);
+        pmEl.className = 'text-sm font-mono font-medium ' + (priceMomentum >= 0 ? 'text-red-400' : 'text-green-400');
+        document.getElementById('flowVolatility').textContent = formatSuffixValue(fs && fs.volatility, '%');
+        document.getElementById('flowUpDays').textContent = formatSuffixValue(fs && fs.up_days, '天');
+        document.getElementById('flowNameRecognition').textContent = normalizeDisplayValue(ld && ld.name_recognition) || '--';
+        setTextById('flowSectorHeat', sectorHeat);
+
+        const warnings = flowStatus.warnings || fs?.data_warnings || [];
+        const warningText = Array.isArray(warnings) && warnings.length
+            ? `数据限制：${warnings.slice(0, 3).join('；')}`
+            : '数据限制：抖音未接入；外部热度使用股吧/东财/雪球代理时会显示置信度。';
+        setTextById('flowDataWarnings', warningText);
         document.getElementById('flowCard').style.display = 'block';
     }
 }
@@ -1750,6 +3214,26 @@ function renderStrategyExitCard(strategyExit, data) {
 
     const cardContainer = document.getElementById('strategyCards');
     const isEtf = Boolean(data && (data.is_etf || String(data.instrument_type || '').toLowerCase() === 'etf'));
+    const actionLabelMap = {
+        stop_loss: '止损卖出',
+        take_profit: '止盈卖出',
+        sell: '卖出',
+        reduce: '减仓',
+        hold: '继续持有',
+        watch: '观察'
+    };
+    const isControlTriggered = (control) => {
+        const label = String(control && control.status_label || '');
+        const status = String(control && (control.current_status || control.status) || '');
+        return Boolean(control && control.is_triggered) || label.includes('已触发') || status.includes('已触发');
+    };
+    const statusClassForControl = (control) => {
+        const label = String(control && control.status_label || '');
+        if (isControlTriggered(control)) return 'risk-control-hit text-red-100';
+        if (label.includes('数据不足')) return 'text-yellow-300 border-yellow-500/35 bg-yellow-900/10';
+        if (label.includes('强势抵消')) return 'text-green-300 border-green-500/35 bg-green-900/10';
+        return 'risk-control-muted text-subtle border-theme/70';
+    };
     const renderSignalLine = (signal) => {
         if (!signal) return '';
         if (typeof signal === 'string') {
@@ -1758,24 +3242,55 @@ function renderStrategyExitCard(strategyExit, data) {
         const title = signal.title || signal.name || signal.signal || signal.summary || '信号';
         const detail = signal.detail || signal.reason || signal.description || '';
         const source = signal.source || signal.priority || '';
+        const priority = String(signal.priority || signal.source || '').toLowerCase();
+        const isHit = priority.includes('high') || priority.includes('medium') || priority.includes('sell') || priority.includes('risk') || source;
         return `
-            <div class="rounded-md border border-theme/70 p-2">
+            <div class="rounded-md border p-2 ${isHit ? 'signal-hit-line' : 'border-theme/70'}">
                 <div class="flex items-center justify-between gap-2 mb-1">
                     <span class="text-xs font-medium">${escapeHtml(title)}</span>
-                    ${source ? `<span class="strategy-pill">${escapeHtml(source)}</span>` : ''}
+                    <span class="strategy-pill ${isHit ? 'risk-badge-hit' : 'risk-badge-soft'}">${escapeHtml(source ? `命中 · ${source}` : '命中')}</span>
                 </div>
                 ${detail ? `<p class="text-xs leading-relaxed text-subtle">${escapeHtml(detail)}</p>` : ''}
             </div>
         `;
     };
-    const renderSignalsDetails = (signals) => `
-        <details class="mt-3">
-            <summary class="cursor-pointer text-xs text-subtle select-none">卖点信号（${signals.length}）</summary>
+    const renderRiskControlLine = (control) => {
+        if (!control) return '';
+        const title = control.title || control.name || '风控规则';
+        const condition = control.trigger_condition || control.condition || '--';
+        const status = control.current_status || control.status || '--';
+        const label = control.status_label || (control.is_triggered ? '已触发' : '未触发');
+        const action = actionLabelMap[control.action_type] || control.action_type || '观察';
+        const triggered = isControlTriggered(control);
+        return `
+            <div class="rounded-md border p-2 ${statusClassForControl(control)}">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
+                    <span class="text-xs font-medium">${triggered ? '⚠️ ' : ''}${escapeHtml(title)}</span>
+                    <span class="strategy-pill ${triggered ? 'risk-badge-hit' : 'risk-badge-soft'}">${escapeHtml(triggered ? `命中 · ${action}` : `${label} · ${action}`)}</span>
+                </div>
+                <p class="text-xs leading-relaxed"><span class="text-subtle">什么时候卖：</span>${escapeHtml(condition)}</p>
+                <p class="text-xs leading-relaxed mt-1"><span class="text-subtle">当前状态：</span>${escapeHtml(status)}</p>
+            </div>
+        `;
+    };
+    const renderSignalsDetails = (signals, riskControls) => {
+        const hitControls = riskControls.filter(isControlTriggered);
+        const hitCount = hitControls.length + signals.length;
+        return `
+        <details class="mt-3" ${hitCount ? 'open' : ''}>
+            <summary class="cursor-pointer text-xs select-none ${hitCount ? 'text-red-200 font-medium' : 'text-subtle'}">
+                ${hitCount ? `⚠️ 命中 ${hitCount} 项 · ` : ''}风控触发状态（${riskControls.length}） · 卖点信号（${signals.length}）
+            </summary>
             <div class="space-y-2 mt-2">
-                ${signals.length ? signals.map(renderSignalLine).join('') : '<p class="text-xs text-subtle">暂无策略信号</p>'}
+                ${riskControls.length ? riskControls.map(renderRiskControlLine).join('') : '<p class="text-xs text-subtle">暂无风控规则状态</p>'}
+                <div class="border-t border-theme/60 pt-2 mt-2">
+                    <p class="text-[11px] ${signals.length ? 'text-red-200 font-medium' : 'text-subtle'} mb-2">${signals.length ? `实际命中的卖点信号（${signals.length}）` : '实际命中的卖点信号'}</p>
+                    ${signals.length ? signals.map(renderSignalLine).join('') : '<p class="text-xs text-subtle">暂无已触发卖点信号</p>'}
+                </div>
             </div>
         </details>
     `;
+    };
     const formatDecisionLabel = (strategy) => {
         const label = strategy && strategy.decision_label;
         if (label !== null && label !== undefined && String(label).trim()) return String(label).trim();
@@ -1821,22 +3336,27 @@ function renderStrategyExitCard(strategyExit, data) {
             const riskKey = normalizeRisk(strategy.risk_level || strategy.risk || strategy.priority);
             const riskMeta = riskMap[riskKey] || riskMap.low;
             const strategySignals = Array.isArray(strategy.signals) ? strategy.signals.filter(Boolean) : [];
+            const riskControls = Array.isArray(strategy.risk_controls) ? strategy.risk_controls.filter(Boolean) : [];
+            const hitCount = strategySignals.length + riskControls.filter(isControlTriggered).length;
             const decision = formatDecisionLabel(strategy);
             const summary = strategy.summary || strategy.reason || strategy.description || '--';
             const name = strategy.name || strategy.strategy_name || strategy.label || key || `策略 ${idx + 1}`;
             return `
-                <div class="strategy-card strategy-card-${riskKey}">
+                <div class="strategy-card strategy-card-${riskKey} ${hitCount ? 'strategy-card-hit' : ''}">
                     <div class="flex items-start justify-between gap-3 mb-3">
                         <div>
-                            <p class="text-sm font-semibold">${escapeHtml(name)}</p>
+                            <p class="text-sm font-semibold">${hitCount ? '⚠️ ' : ''}${escapeHtml(name)}</p>
                             <p class="text-xs text-subtle mt-1">${escapeHtml(summary)}</p>
                         </div>
-                        <span class="strategy-pill ${riskMeta.text}">${escapeHtml(riskMeta.label)}${strategy.risk_score != null ? ` · ${escapeHtml(strategy.risk_score)}` : ''}</span>
+                        <div class="flex flex-col items-end gap-1">
+                            ${hitCount ? `<span class="strategy-pill risk-badge-hit">命中 ${hitCount}</span>` : ''}
+                            <span class="strategy-pill ${riskMeta.text}">${escapeHtml(riskMeta.label)}${strategy.risk_score != null ? ` · ${escapeHtml(strategy.risk_score)}` : ''}</span>
+                        </div>
                     </div>
                     <div class="bg-accent/30 rounded-md px-3 py-2 mb-3 text-xs">
                         <span class="text-subtle">决策：</span><span class="font-medium">${escapeHtml(decision)}</span>
                     </div>
-                    ${renderSignalsDetails(strategySignals)}
+                    ${renderSignalsDetails(strategySignals, riskControls)}
                 </div>
             `;
         }).join('');
@@ -1977,23 +3497,31 @@ async function loadHistory() {
         const records = res.data || [];
 
         if (records.length === 0) {
+            state.historyRecords = new Map();
             list.innerHTML = '<p class="text-subtle text-sm py-4 text-center">暂无分析记录</p>';
             return;
         }
 
+        state.historyRecords = new Map(records.map(r => [Number(r.id), r]));
         list.innerHTML = records.map(r => {
             const code = r.stock_code || r.code || '--';
             const name = r.stock_name || r.name || '';
             const score = r.total_score != null ? `${Math.round(r.total_score)}分` : (r.score != null ? `${Math.round(r.score)}分` : '--');
             const rec = r.recommendation || '--';
             const time = r.created_at ? new Date(r.created_at).toLocaleString('zh-CN') : '--';
+            const buyDate = r.buy_date || '';
+            const costPrice = r.cost_price != null ? Number(r.cost_price).toFixed(3).replace(/\.?0+$/, '') : '';
+            const replayBits = [buyDate ? `买入日 ${buyDate}` : '', costPrice ? `成本 ${costPrice}` : ''].filter(Boolean).join(' · ');
+            const sectorTags = renderSectorHeatPills(r, { className: 'mt-1 flex flex-wrap gap-1.5 min-w-0', compact: true });
             return `
-                <div class="history-item flex items-center justify-between py-3 px-2 rounded-lg">
-                    <div>
+                <div class="history-item flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 py-3 px-2 rounded-lg" onclick="analyzeFromHistory(${Number(r.id)})">
+                    <div class="min-w-0">
                         <span class="font-medium text-sm">${code}</span>
                         ${name ? `<span class="text-subtle text-xs ml-2">${name}</span>` : ''}
+                        ${replayBits ? `<p class="text-[11px] text-subtle mt-1">${escapeHtml(replayBits)}</p>` : ''}
+                        ${sectorTags}
                     </div>
-                    <div class="flex items-center gap-3 text-xs">
+                    <div class="flex items-center gap-3 text-xs shrink-0">
                         <span class="${score >= 60 ? 'text-green-400' : score >= 40 ? 'text-yellow-400' : 'text-red-400'}">${score}</span>
                         <span class="text-subtle">${rec}</span>
                         <span class="text-subtle hidden sm:inline">${time}</span>
@@ -2016,6 +3544,7 @@ async function loadWatchlist() {
     try {
         const res = await apiCall('GET', `${API_BASE}/api/watchlist`);
         const items = res.data || [];
+        state.watchlistItems = new Map(items.map(item => [String(item.stock_code || item.code || ''), item]));
 
         if (items.length === 0) {
             container.innerHTML = '';
@@ -2033,29 +3562,57 @@ async function loadWatchlist() {
             const scoreDisplay = score != null ? `${Math.round(score)}分` : '未分析';
             const scoreClass = score != null ? (score >= 70 ? 'text-green-400' : score >= 50 ? 'text-yellow-400' : 'text-red-400') : 'text-subtle';
             const rec = item.latest_recommendation || '';
+            const flowPills = getWatchlistFlowPills(item);
+            const riskText = getWatchlistRiskText(item);
+            const actionCode = String(code).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            const safeCode = escapeHtml(code);
+            const safeName = escapeHtml(name);
+            const avatarText = escapeHtml(name ? name.charAt(0) : code.slice(0, 2));
+            const exitTool = renderWatchlistExitTool(item, code);
+            const pinnedAt = item.pinned_at || item.pinnedAt || '';
+            const isPinned = Boolean(pinnedAt);
+            const pinButtonText = isPinned ? '取消置顶' : '置顶';
+            const pinButtonClass = isPinned ? 'btn-ghost' : 'btn-primary';
             return `
-                <div class="card flex items-center justify-between fade-in" style="animation-delay:${idx * 0.05}s">
-                    <div class="flex items-center gap-3 cursor-pointer" onclick="analyzeFromWatchlist('${code}')">
-                        <div class="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-sm font-bold">${name ? name.charAt(0) : code.slice(0,2)}</div>
-                        <div>
-                            <p class="font-medium text-sm">${code} <span class="text-subtle font-normal">${name}</span></p>
-                            <p class="text-xs text-subtle">添加于 ${time}</p>
+                <div class="card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 fade-in" style="animation-delay:${idx * 0.05}s">
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-3 cursor-pointer min-w-0" onclick="analyzeFromWatchlist('${actionCode}')">
+                            <div class="w-10 h-10 shrink-0 rounded-full bg-accent flex items-center justify-center text-sm font-bold">${avatarText}</div>
+                            <div class="min-w-0">
+                                <p class="font-medium text-sm">${safeCode} <span class="text-subtle font-normal">${safeName}</span>${isPinned ? '<span class="strategy-pill text-yellow-300 ml-2">已置顶</span>' : ''}</p>
+                                <p class="text-xs text-subtle">添加于 ${escapeHtml(time)}</p>
+                                ${flowPills}
+                            </div>
                         </div>
+                        ${exitTool}
                     </div>
-                    <div class="flex items-center gap-2">
-                        <div class="text-right mr-2">
-                            <p class="text-sm font-bold ${scoreClass}">${scoreDisplay}</p>
-                            ${rec ? `<p class="text-xs text-subtle">${rec}</p>` : ''}
+                    <div class="flex items-center gap-2 shrink-0">
+                        <div class="text-right mr-2 min-w-[72px]">
+                            <p class="text-sm font-bold ${scoreClass}">${escapeHtml(scoreDisplay)}</p>
+                            ${rec ? `<p class="text-xs text-subtle">${escapeHtml(rec)}</p>` : ''}
+                            ${riskText ? `<p class="text-[11px] text-red-300">${escapeHtml(riskText)}</p>` : ''}
                         </div>
-                        <button onclick="analyzeFromWatchlist('${code}')" class="text-xs btn-ghost px-3 py-1.5 rounded-lg">分析</button>
-                        <button onclick="removeWatchlist('${code}')" class="text-xs btn-danger px-2 py-1.5 rounded-lg">删除</button>
+                        <button onclick="toggleWatchlistPin('${actionCode}', ${isPinned ? 'false' : 'true'})" class="text-xs ${pinButtonClass} px-3 py-1.5 rounded-lg">${pinButtonText}</button>
+                        <button onclick="analyzeFromWatchlist('${actionCode}')" class="text-xs btn-ghost px-3 py-1.5 rounded-lg">分析</button>
+                        <button onclick="removeWatchlist('${actionCode}')" class="text-xs btn-danger px-2 py-1.5 rounded-lg">删除</button>
                     </div>
                 </div>
             `;
         }).join('');
+        hydrateWatchlistExitTools(items);
     } catch (e) {
         document.getElementById('watchlistContent').innerHTML =
             `<div class="card text-center py-8"><p class="text-subtle text-sm">加载自选股失败: ${e.message}</p></div>`;
+    }
+}
+
+async function toggleWatchlistPin(code, pinned) {
+    try {
+        await apiCall('PATCH', `${API_BASE}/api/watchlist/${code}/pin`, { pinned });
+        showToast(pinned ? '已置顶' : '已取消置顶', 'success');
+        loadWatchlist();
+    } catch (e) {
+        showToast(e.message, 'error');
     }
 }
 
@@ -2104,12 +3661,92 @@ async function removeWatchlist(code) {
 const DAILY_PICK_STRATEGIES = [
     { key: 'first_board_relay', name: '低位3连阳首板接力' },
     { key: 'leader_chase', name: '龙头追击' },
-    { key: 'etf_rotation', name: 'ETF动量轮动' }
+    { key: 'etf_rotation', name: 'ETF动量轮动' },
+    { key: 'qlib_model', name: 'Qlib模型研究参考' }
 ];
 
 function normalizeDailyPicksPayload(payload) {
     return payload && payload.data ? payload.data : payload;
 }
+
+function renderMorningNote(note) {
+    const status = document.getElementById('morningNoteStatus');
+    const meta = document.getElementById('morningNoteMeta');
+    const content = document.getElementById('morningNoteContent');
+    if (!status || !meta || !content) return;
+
+    state.morningNote = note || null;
+    const dataStatus = note && note.data_status ? note.data_status : {};
+    const warnings = Array.isArray(note && note.risk_notes) ? note.risk_notes.slice(0, 3) : [];
+    status.textContent = dataStatus.status === 'degraded' ? '降级' : '已生成';
+    status.className = `flow-status-pill ${dataStatus.status === 'degraded' ? 'daily-source-badge-warn' : 'daily-source-badge-ok'}`;
+    const tradeDate = note && note.trade_date ? formatDailyDate(note.trade_date) : '--';
+    const source = dataStatus.source || '--';
+    meta.textContent = `交易日 ${tradeDate} · 来源 ${source} · 仅供研究参考`;
+    const markdown = note && note.markdown ? note.markdown : '';
+    content.innerHTML = `
+        <div class="morning-note-top-call text-sm">${escapeHtml(note && note.top_call ? note.top_call : '暂无高置信热榜，先以风控观察为主。')}</div>
+        ${warnings.length ? `<div class="morning-note-risk">${warnings.map(item => `<span>${escapeHtml(item)}</span>`).join('')}</div>` : ''}
+        <div class="morning-note-markdown">${escapeHtml(markdown || '暂无晨会稿内容')}</div>
+    `;
+}
+
+function renderMorningNoteError(message) {
+    const status = document.getElementById('morningNoteStatus');
+    const meta = document.getElementById('morningNoteMeta');
+    const content = document.getElementById('morningNoteContent');
+    if (!status || !meta || !content) return;
+    state.morningNote = null;
+    status.textContent = '失败';
+    status.className = 'flow-status-pill daily-source-badge-warn';
+    meta.textContent = '晨会稿暂不可用';
+    content.innerHTML = `
+        <div class="morning-note-top-call text-sm">晨会稿生成失败，原热榜与今日推荐仍可单独查看。</div>
+        <div class="morning-note-risk"><span>${escapeHtml(message || '请求失败')}</span></div>
+    `;
+}
+
+async function loadMorningNote(force = false) {
+    const status = document.getElementById('morningNoteStatus');
+    const content = document.getElementById('morningNoteContent');
+    const btn = document.getElementById('morningNoteRefreshBtn');
+    if (!status || !content) return;
+    if (btn && force) {
+        btn.disabled = true;
+        btn.innerHTML = '生成中...';
+    }
+    status.textContent = '生成中';
+    content.innerHTML = '<div class="morning-note-top-call text-sm"><div class="loading-spinner" style="width:22px;height:22px;margin:0 8px 0 0;display:inline-block;vertical-align:middle;"></div>正在聚合今日推荐与热榜...</div>';
+    try {
+        const res = await apiCall('GET', `${API_BASE}/api/research/morning-note?limit=5`);
+        renderMorningNote(normalizeDailyPicksPayload(res));
+        if (force) showToast('晨会稿已生成', 'success');
+    } catch (e) {
+        renderMorningNoteError(e.message);
+        if (force) showToast(e.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '刷新晨会稿';
+        }
+    }
+}
+
+async function copyMorningNote() {
+    const markdown = state.morningNote && state.morningNote.markdown;
+    if (!markdown) {
+        showToast('暂无可复制的晨会稿', 'warning');
+        return;
+    }
+    try {
+        await navigator.clipboard.writeText(markdown);
+        showToast('晨会稿已复制', 'success');
+    } catch (e) {
+        showToast('复制失败，请手动选中文本复制', 'warning');
+    }
+}
+window.loadMorningNote = loadMorningNote;
+window.copyMorningNote = copyMorningNote;
 
 function formatDailyDate(value) {
     if (!value) return '--';
@@ -2180,7 +3817,13 @@ function renderDailyMetrics(metrics) {
         ma10: 'MA10',
         ma20: 'MA20',
         rsi: 'RSI',
-        score: '指标分'
+        score: '指标分',
+        model_score: '模型评分',
+        pred_return_3d: '预测3日收益',
+        model_version: '模型版本',
+        predict_date: '预测日期',
+        train_start: '训练开始',
+        train_end: '训练结束'
     };
     const entries = Object.entries(metrics).filter(([, value]) => value !== null && value !== undefined && value !== '').slice(0, 8);
     if (!entries.length) return '<p class="text-xs text-subtle">暂无指标</p>';
@@ -2199,26 +3842,32 @@ function renderDailyMetrics(metrics) {
 function renderRecommendationCard(item) {
     const code = item.code || item.stock_code || '--';
     const name = item.name || item.stock_name || '';
+    const actionCode = String(code).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     const rank = item.rank != null ? `#${item.rank}` : '#--';
     const score = formatDailyScore(item.score);
     const mode = item.mode || item.signal_mode || '--';
     const dataStatus = formatDailyDataStatus(item.data_status);
     const createdAt = item.created_at ? formatDailyTime(item.created_at) : '';
+    const sectorTags = renderSectorHeatPills(item, { className: 'mt-2 flex flex-wrap gap-1.5 min-w-0', compact: true });
 
     return `
         <div class="strategy-card fade-in">
             <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
-                <div class="min-w-0">
+                <div class="min-w-0 cursor-pointer" onclick="analyzeFromDailyPick('${actionCode}')">
                     <div class="flex flex-wrap items-center gap-2">
                         <span class="strategy-pill text-accent font-medium">${escapeHtml(rank)}</span>
                         <span class="font-mono text-sm font-semibold">${escapeHtml(code)}</span>
                         ${name ? `<span class="text-sm font-medium truncate">${escapeHtml(name)}</span>` : ''}
                     </div>
                     <p class="text-xs text-subtle mt-1 break-words">模式：${escapeHtml(mode)}${dataStatus ? ` · 数据：${escapeHtml(dataStatus)}` : ''}${createdAt ? ` · ${createdAt}` : ''}</p>
+                    ${sectorTags}
                 </div>
-                <div class="shrink-0 bg-card-light border border-theme rounded-lg px-3 py-2 text-center min-w-[72px]">
-                    <p class="text-[11px] text-subtle">评分</p>
-                    <p class="text-base font-bold text-accent">${score}</p>
+                <div class="shrink-0 flex items-center gap-2">
+                    <div class="bg-card-light border border-theme rounded-lg px-3 py-2 text-center min-w-[72px]">
+                        <p class="text-[11px] text-subtle">评分</p>
+                        <p class="text-base font-bold text-accent">${score}</p>
+                    </div>
+                    <button onclick="analyzeFromDailyPick('${actionCode}')" class="btn-ghost text-xs px-3 py-2 rounded-lg whitespace-nowrap">分析</button>
                 </div>
             </div>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
@@ -2236,6 +3885,417 @@ function renderRecommendationCard(item) {
     `;
 }
 
+function formatDailyPct(value) {
+    if (value === null || value === undefined || value === '') return '--';
+    const num = Number(value);
+    if (!Number.isFinite(num)) return escapeHtml(value);
+    return `${num >= 0 ? '+' : ''}${num.toFixed(2)}%`;
+}
+
+function formatDailyAmount(value) {
+    if (value === null || value === undefined || value === '') return '--';
+    const num = Number(value);
+    if (!Number.isFinite(num)) return escapeHtml(value);
+    const abs = Math.abs(num);
+    if (abs >= 100000000) return `${(num / 100000000).toFixed(abs >= 1000000000 ? 1 : 2)}亿`;
+    if (abs >= 10000) return `${(num / 10000).toFixed(abs >= 1000000 ? 0 : 1)}万`;
+    return escapeHtml(num.toLocaleString('zh-CN'));
+}
+
+function formatDailyConfidence(value) {
+    if (value === null || value === undefined || value === '') return '--';
+    const num = Number(value);
+    if (!Number.isFinite(num)) return escapeHtml(value);
+    if (num <= 1) return `${Math.round(num * 100)}%`;
+    return `${Math.round(num)}%`;
+}
+
+function formatDailyCapitalSource(value) {
+    const text = String(value || '');
+    const labels = {
+        main_net_inflow: '主力净流入',
+        large_order_net_inflow: '大单净流入',
+        amount_proxy: '成交额代理',
+        visibility_proxy: '可见度代理',
+        ths_hot_reason_proxy: '题材归因代理'
+    };
+    return labels[text] || text || '--';
+}
+
+function normalizeDailyStatus(value) {
+    if (value === null || value === undefined || value === '') return '';
+    if (typeof value === 'object') {
+        return String(value.status || value.state || value.data_status || value.label || JSON.stringify(value));
+    }
+    return String(value);
+}
+
+function classifyDailySourceStatus(value) {
+    const text = normalizeDailyStatus(value).toLowerCase();
+    if (!text) return 'off';
+    if (['missing', 'none', 'unavailable', 'offline', 'disabled', 'not_connected', 'not connected', 'not available', '未接入', '不可用'].some(key => text.includes(key))) return 'off';
+    if (['ok', 'ready', 'available', 'success', 'connected', 'active', 'normal'].some(key => text.includes(key))) return 'ok';
+    return 'warn';
+}
+
+function formatDailySourceStatus(value) {
+    const text = normalizeDailyStatus(value);
+    if (!text) return '未接入';
+    const lowered = text.toLowerCase();
+    const labels = {
+        ok: '可用',
+        ready: '可用',
+        available: '可用',
+        success: '可用',
+        partial: '部分',
+        fallback: '降级',
+        degraded: '降级',
+        empty: '空数据',
+        unavailable: '不可用',
+        missing: '缺失',
+        disabled: '未接入',
+        not_connected: '未接入',
+        pending: '待接入'
+    };
+    return escapeHtml(labels[lowered] || text);
+}
+
+function sourceScoreState(sourceScores, keys) {
+    if (!sourceScores || typeof sourceScores !== 'object') return '';
+    for (const key of keys) {
+        if (sourceScores[key] !== null && sourceScores[key] !== undefined && sourceScores[key] !== '') {
+            const value = sourceScores[key];
+            if (typeof value === 'object') return value.status || value.score || value.value || '可用';
+            return value;
+        }
+    }
+    return '';
+}
+
+function renderDailySourceBadges(dataStatus, sourceScores) {
+    const sources = [
+        { label: 'a-stock-data直连', status: dataStatus.a_stock_data_status, scoreKeys: ['a_stock_data', 'eastmoney_fund', 'capital_inflow_score'] },
+        { label: '东财直连', status: dataStatus.eastmoney_direct_status, scoreKeys: ['eastmoney_direct'] },
+        { label: 'AKShare兜底', status: dataStatus.akshare_fund_status || dataStatus.akshare_status, scoreKeys: ['akshare_fund'] },
+        { label: '同花顺资金流', status: dataStatus.ths_fund_status, scoreKeys: ['ths_fund', 'ths_fund_score'] },
+        { label: '同花顺题材', status: dataStatus.ths_hot_status, scoreKeys: ['ths_hot'] },
+        { label: '腾讯行情', status: dataStatus.tencent_quote_status, scoreKeys: ['tencent_quote'] },
+        { label: '分钟资金流', status: dataStatus.eastmoney_minute_flow_status, scoreKeys: ['eastmoney_minute_flow'] },
+        { label: '东财人气/股吧', status: dataStatus.eastmoney_attention_status, scoreKeys: ['eastmoney_attention', 'eastmoney_guba', 'visibility_score'] },
+        { label: '雪球', status: dataStatus.xueqiu_status, scoreKeys: ['xueqiu', 'xueqiu_score'] },
+        { label: '低置信度代理', status: ['visibility_proxy', 'ths_hot_reason'].includes(dataStatus.fallback_mode) ? 'fallback' : 'disabled', scoreKeys: ['fallback'] },
+        { label: '抖音', status: dataStatus.douyin_status || 'not_connected', scoreKeys: ['douyin', 'douyin_score'] }
+    ];
+    return sources.map(source => {
+        const scoreState = sourceScoreState(sourceScores, source.scoreKeys);
+        const statusValue = source.status || scoreState;
+        const hasNumericScore = scoreState !== null && scoreState !== undefined && scoreState !== '' && Number.isFinite(Number(scoreState));
+        const badgeState = source.label === '抖音' ? 'off' : (source.status ? classifyDailySourceStatus(source.status) : (hasNumericScore ? 'ok' : classifyDailySourceStatus(statusValue || scoreState)));
+        const statusLabel = source.label === '抖音' ? '未接入' : (source.status ? formatDailySourceStatus(source.status) : (hasNumericScore ? '可用' : formatDailySourceStatus(statusValue)));
+        const scoreText = scoreState !== null && scoreState !== undefined && scoreState !== '' && typeof scoreState !== 'object'
+            ? ` · ${formatDailyScore(scoreState)}`
+            : '';
+        return `<span class="daily-source-badge daily-source-badge-${badgeState}">${escapeHtml(source.label)}${scoreText}<span class="ml-1 opacity-75">${statusLabel}</span></span>`;
+    }).join('');
+}
+
+function getDailyHeatSignal(item) {
+    const capitalSource = String(item && item.capital_source || '');
+    if (capitalSource === 'visibility_proxy') {
+        return { label: '低置信度代理', className: 'daily-heat-signal-diverge' };
+    }
+    const entry = Number(item && item.entry_power_score);
+    const capital = Number(item && item.capital_inflow_score);
+    const slope = Number(item && item.capital_slope_score);
+    const attention = Number(item && item.attention_acceleration_score);
+    if (Number.isFinite(capital) && Number.isFinite(slope) && capital < 45 && slope < 45) {
+        return { label: '资金转弱', className: 'daily-heat-signal-weak' };
+    }
+    if (Number.isFinite(entry) && entry >= 78 && Number.isFinite(capital) && Number.isFinite(attention) && Math.abs(capital - attention) >= 28) {
+        return { label: '高热分歧', className: 'daily-heat-signal-diverge' };
+    }
+    if (Number.isFinite(attention) && attention >= 65 && (!Number.isFinite(capital) || capital < 72)) {
+        return { label: '流量升温', className: 'daily-heat-signal-warming' };
+    }
+    if (Number.isFinite(capital) && capital >= 65) {
+        return { label: '资金进入增强', className: 'daily-heat-signal-strong' };
+    }
+    return { label: '高热分歧', className: 'daily-heat-signal-diverge' };
+}
+
+function normalizeDiscussionLinks(value) {
+    if (!value) return [];
+    const entries = Array.isArray(value)
+        ? value
+        : Object.entries(value).map(([key, item]) => {
+            if (typeof item === 'string') return { label: key, href: item };
+            return { label: item && (item.label || item.name) || key, href: item && (item.href || item.url || item.link) };
+        });
+    const labelMap = {
+        eastmoney_guba: '东财股吧',
+        eastmoney_quote: '东财行情',
+        eastmoney: '东财',
+        guba: '股吧',
+        quote: '行情',
+        xueqiu: '雪球'
+    };
+    return entries.map((link) => {
+        if (!link) return null;
+        if (typeof link === 'string') return { label: '链接', href: link };
+        const rawLabel = String(link.label || link.name || link.type || '链接');
+        return {
+            label: labelMap[rawLabel] || rawLabel,
+            href: link.href || link.url || link.link || ''
+        };
+    }).filter(link => link && /^https?:\/\//.test(String(link.href || '')));
+}
+
+function renderDailyDiscussionLinks(links) {
+    const normalized = normalizeDiscussionLinks(links);
+    if (!normalized.length) return '';
+    return `<div class="daily-heat-links">${normalized.slice(0, 4).map(link => `<a class="daily-heat-link" href="${escapeHtml(link.href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(link.label)}</a>`).join('')}</div>`;
+}
+
+function renderDailyRiskFlags(flags) {
+    const list = normalizeTextList(flags);
+    if (!list.length) return '';
+    return `<div class="flex flex-wrap gap-1.5 mt-2">${list.slice(0, 4).map(flag => `<span class="daily-heat-flag">${escapeHtml(flag)}</span>`).join('')}</div>`;
+}
+
+function renderDailyRelatedEtfs(etfs) {
+    const list = Array.isArray(etfs) ? etfs.filter(Boolean).slice(0, 2) : [];
+    if (!list.length) return '';
+    return `
+        <div class="daily-heat-etfs mt-3">
+            <div class="flex items-center justify-between gap-2 mb-2">
+                <p class="text-[11px] text-subtle">相关强 ETF</p>
+                <p class="text-[10px] text-subtle">板块映射观察</p>
+            </div>
+            <div class="daily-heat-etf-grid">
+                ${list.map((etf) => {
+                    const code = etf.code || etf.stock_code || '--';
+                    const name = etf.name || etf.stock_name || '--';
+                    const actionCode = String(code).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                    const changeText = etf.change_pct !== null && etf.change_pct !== undefined && etf.change_pct !== ''
+                        ? `涨跌 ${formatDailyPct(etf.change_pct)}`
+                        : '涨跌 --';
+                    const amountText = etf.amount !== null && etf.amount !== undefined && etf.amount !== ''
+                        ? `成交 ${formatDailyAmount(etf.amount)}`
+                        : '成交 --';
+                    const scoreText = etf.etf_entry_score !== null && etf.etf_entry_score !== undefined && etf.etf_entry_score !== ''
+                        ? `强度 ${formatDailyScore(etf.etf_entry_score)}`
+                        : `相关 ${formatDailyScore(etf.relevance_score)}`;
+                    const sourceText = etf.source === 'keyword_map+tencent_quote' ? '腾讯行情' : '关键词映射';
+                    return `
+                        <div class="daily-heat-etf" onclick="analyzeFromDailyPick('${actionCode}')">
+                            <div class="flex flex-wrap items-center gap-2 min-w-0">
+                                <span class="daily-heat-etf-code">${escapeHtml(code)}</span>
+                                <span class="strategy-pill text-accent">分析</span>
+                            </div>
+                            <p class="daily-heat-etf-name">${escapeHtml(name)}</p>
+                            <p class="daily-heat-etf-meta">${escapeHtml(scoreText)} · ${escapeHtml(changeText)} · ${escapeHtml(amountText)} · ${escapeHtml(sourceText)}</p>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `;
+}
+
+function renderDailyLeaders(leaders) {
+    const list = Array.isArray(leaders) ? leaders.filter(Boolean).slice(0, 3) : [];
+    if (!list.length) {
+        return `
+            <div class="daily-heat-leaders mt-3">
+                <p class="text-xs text-subtle">龙头数据不足</p>
+            </div>
+        `;
+    }
+    return `
+        <div class="daily-heat-leaders mt-3">
+            <p class="text-[11px] text-subtle mb-2">龙头联动</p>
+            ${list.map((leader, index) => {
+                const label = leader.leader_label || `龙${['一', '二', '三'][index] || index + 1}`;
+                const code = leader.code || leader.stock_code || '--';
+                const name = leader.name || leader.stock_name || '--';
+                const actionCode = String(code).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                const reasons = normalizeTextList(leader.reasons).slice(0, 2).join('；');
+                const ranks = [
+                    leader.capital_rank ? `资金#${leader.capital_rank}` : '',
+                    leader.attention_rank ? `流量#${leader.attention_rank}` : '',
+                    leader.attention_change !== null && leader.attention_change !== undefined && leader.attention_change !== '' ? `流量变动 ${formatDailyPct(leader.attention_change)}` : ''
+                ].filter(Boolean).join(' · ');
+                return `
+                    <div class="daily-heat-leader-row cursor-pointer" onclick="analyzeFromDailyPick('${actionCode}')">
+                        <div class="min-w-0">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="daily-leader-label">${escapeHtml(label)}</span>
+                                <span class="font-mono text-xs font-semibold">${escapeHtml(code)}</span>
+                                <span class="text-xs font-medium daily-heat-topic-title">${escapeHtml(name)}</span>
+                                <span class="strategy-pill text-accent">分析</span>
+                            </div>
+                            <p class="text-[11px] text-subtle mt-1">${escapeHtml(ranks || '龙头排序待补充')}</p>
+                            <p class="text-[11px] text-subtle mt-1">净流入 ${formatDailyAmount(leader.capital_inflow_amount)} · 入场分 ${formatDailyScore(leader.leader_entry_score)}</p>
+                        </div>
+                        <div class="min-w-0">
+                            ${reasons ? `<p class="text-[11px] leading-relaxed text-subtle mb-2">${escapeHtml(reasons)}</p>` : '<p class="text-[11px] text-subtle mb-2">暂无龙头原因</p>'}
+                            ${renderDailyDiscussionLinks(leader.discussion_links)}
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+}
+
+function sectorTypeLabel(value) {
+    const text = String(value || '').toLowerCase();
+    if (text === 'concept') return '概念';
+    if (text === 'industry') return '行业';
+    if (text === 'topic') return '题材';
+    return '板块';
+}
+
+function renderDailyHeatRanking(data) {
+    const list = document.getElementById('dailyHeatRankingList');
+    const status = document.getElementById('dailyHeatStatus');
+    const meta = document.getElementById('dailyHeatMeta');
+    const warningsEl = document.getElementById('dailyHeatWarnings');
+    if (!list || !status || !meta || !warningsEl) return;
+
+    const items = Array.isArray(data && data.items) ? data.items : [];
+    const dataStatus = data && data.data_status ? data.data_status : {};
+    const warnings = Array.isArray(dataStatus.warnings) ? dataStatus.warnings : [];
+    const statusText = dataStatus.status || dataStatus.snapshot_status || (items.length ? 'ok' : 'degraded');
+    const fallbackMode = dataStatus.fallback_mode || 'none';
+    status.textContent = fallbackMode === 'snapshot' ? '快照兜底榜' : fallbackMode === 'ths_hot_reason' ? '同花顺题材归因榜' : fallbackMode === 'visibility_proxy' ? '低置信度代理榜' : fallbackMode === 'unavailable' ? '数据源不可达' : statusText === 'ok' ? '资金流量榜' : statusText === 'partial' ? '部分可用' : statusText === 'fallback' ? '降级聚合' : statusText === 'degraded' ? '数据源不可达' : formatDailySourceStatus(statusText);
+    status.className = `flow-status-pill ${statusText === 'degraded' || fallbackMode !== 'none' ? 'flow-risk-mid' : 'text-subtle'}`;
+    const sourceNote = fallbackMode === 'snapshot'
+        ? '公开实时资金流源不可达，当前显示最近一次有效快照，非实时资金净流入榜'
+        : fallbackMode === 'ths_hot_reason'
+        ? 'a-stock-data 同花顺题材 + 腾讯行情/分钟资金流代理，不是板块资金净流入榜'
+        : fallbackMode === 'visibility_proxy'
+            ? '低置信度代理，不是资金净流入榜'
+            : '不构成买入建议';
+    meta.textContent = `窗口 ${data?.window || 'latest'} · 日期 ${data?.date || '--'} · 来源 ${data?.source || '--'} · 全局置信度 ${formatDailyConfidence(data?.confidence)} · ${sourceNote}`;
+    warningsEl.style.display = warnings.length ? 'block' : 'none';
+    warningsEl.textContent = warnings.length ? `数据限制：${warnings.slice(0, 4).join('；')}` : '';
+
+    if (!items.length) {
+        const sourceUnavailable = fallbackMode === 'unavailable' || statusText === 'degraded' || warnings.length;
+        const title = sourceUnavailable ? '数据源不可达' : '暂无可排序数据';
+        const body = sourceUnavailable
+            ? 'a-stock-data直连、AKShare兜底、同花顺题材等公开源暂时不可用，系统已停止等待并保留诊断信息。'
+            : '资金流、外部流量或快照不足，暂时没有可排序题材。';
+        list.innerHTML = `
+            <div class="daily-heat-item col-span-full text-center py-6">
+                <p class="text-sm text-subtle">${escapeHtml(title)}</p>
+                <p class="text-xs text-subtle mt-1">${escapeHtml(body)}</p>
+            </div>
+        `;
+        return;
+    }
+
+    list.innerHTML = items.slice(0, 5).map((rawItem, index) => {
+        const item = rawItem || {};
+        const entryScore = formatDailyScore(item.entry_power_score);
+        const name = item.topic_name || item.sector_name || '--';
+        const rank = item.rank ?? index + 1;
+        const type = sectorTypeLabel(item.topic_type || item.sector_type);
+        const signal = getDailyHeatSignal(item);
+        const sourceBadges = renderDailySourceBadges(dataStatus, item.source_scores || {});
+        const topicLinks = renderDailyDiscussionLinks(item.discussion_links);
+        const warnings = normalizeTextList(item.warnings).slice(0, 2).join('；');
+        const isProxy = ['visibility_proxy', 'ths_hot_reason_proxy', 'amount_proxy'].includes(item.capital_source);
+        const attentionNote = item.source_provider === 'ths_hot' ? '同花顺题材归因/公开讨论代理' : '股吧/雪球/东财人气等外部关注';
+        return `
+            <div class="daily-heat-item ${index < 3 ? 'daily-heat-item-top' : ''}">
+                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="flex flex-wrap items-center gap-2 min-w-0">
+                            <span class="daily-heat-rank">#${escapeHtml(rank)}</span>
+                            <span class="daily-heat-signal ${signal.className}">${escapeHtml(signal.label)}</span>
+                            <p class="font-semibold text-sm daily-heat-topic-title">${escapeHtml(name)}</p>
+                        </div>
+                        <p class="text-[11px] text-subtle mt-2">${escapeHtml(type)} · 入场能量 ${entryScore} · 转化 ${formatDailyScore(item.topic_conversion_score)} · 可见度 ${formatDailyScore(item.visibility_score)}</p>
+                    </div>
+                    <div class="text-left sm:text-right shrink-0">
+                        <p class="text-[11px] text-subtle">入场能量</p>
+                        <p class="daily-heat-score">${entryScore}</p>
+                    </div>
+                </div>
+                <div class="daily-heat-metrics mt-3">
+                    <div class="daily-heat-metric">
+                        <p class="daily-heat-metric-label">资金进入强度</p>
+                        <p class="daily-heat-metric-value text-green-300">${formatDailyScore(item.capital_inflow_score)}</p>
+                        <p class="daily-heat-metric-note">斜率 ${formatDailyScore(item.capital_slope_score)}</p>
+                    </div>
+                    <div class="daily-heat-metric">
+                        <p class="daily-heat-metric-label">净流入/窗口</p>
+                        <p class="daily-heat-metric-value text-amber-200">${formatDailyAmount(item.capital_inflow_amount)}</p>
+                        <p class="daily-heat-metric-note">${escapeHtml(item.capital_window || data?.window || '--')} · ${escapeHtml(formatDailyCapitalSource(item.capital_source))}${isProxy ? ' · 非真实净流入' : ''}</p>
+                    </div>
+                    <div class="daily-heat-metric">
+                        <p class="daily-heat-metric-label">外部流量增速</p>
+                        <p class="daily-heat-metric-value text-sky-200">${formatDailyScore(item.attention_acceleration_score)}</p>
+                        <p class="daily-heat-metric-note">${escapeHtml(attentionNote)}</p>
+                    </div>
+                    <div class="daily-heat-metric">
+                        <p class="daily-heat-metric-label">置信度</p>
+                        <p class="daily-heat-metric-value">${formatDailyConfidence(item.confidence)}</p>
+                        <p class="daily-heat-metric-note">来源覆盖与快照质量</p>
+                    </div>
+                </div>
+                <div class="flow-source-list mt-3">${sourceBadges}</div>
+                ${topicLinks ? `<div class="mt-3">${topicLinks}</div>` : ''}
+                ${warnings ? `<p class="text-[11px] text-subtle mt-2 leading-relaxed">提示：${escapeHtml(warnings)}</p>` : ''}
+                ${renderDailyRiskFlags(item.risk_flags)}
+                ${renderDailyRelatedEtfs(item.related_etfs)}
+                ${renderDailyLeaders(item.leaders)}
+            </div>
+        `;
+    }).join('');
+}
+
+async function loadDailyHeatRanking(force = false) {
+    const list = document.getElementById('dailyHeatRankingList');
+    const status = document.getElementById('dailyHeatStatus');
+    const btn = document.getElementById('dailyHeatRefreshBtn');
+    if (!list || !status) return;
+    if (dailyHeatRankingLoading) return;
+    dailyHeatRankingLoading = true;
+    const requestId = ++dailyHeatRankingRequestId;
+    if (force && btn) {
+        btn.disabled = true;
+        btn.innerHTML = '刷新中...';
+    }
+    status.textContent = '加载中';
+    list.innerHTML = '<div class="daily-heat-item col-span-full text-center py-5"><div class="loading-spinner" style="width:24px;height:24px;"></div><p class="text-xs text-subtle">读取资金流与外部流量...</p></div>';
+    try {
+        const res = await apiCallWithTimeout('GET', `${API_BASE}/api/attention-heat/ranking?limit=5&leaders=3`, null, 18000);
+        if (requestId !== dailyHeatRankingRequestId) return;
+        renderDailyHeatRanking(normalizeDailyPicksPayload(res));
+    } catch (e) {
+        if (requestId !== dailyHeatRankingRequestId) return;
+        renderDailyHeatRanking({
+            items: [],
+            source: 'unavailable',
+            window: 'latest',
+            confidence: 0,
+            data_status: { status: 'degraded', warnings: [e.message || '热榜读取失败'] }
+        });
+    } finally {
+        if (requestId === dailyHeatRankingRequestId) {
+            dailyHeatRankingLoading = false;
+        }
+        if (btn && requestId === dailyHeatRankingRequestId) {
+            btn.disabled = false;
+            btn.innerHTML = '刷新热榜';
+        }
+    }
+}
+window.loadDailyHeatRanking = loadDailyHeatRanking;
+
 async function loadDailyPicks() {
     const container = document.getElementById('dailyPicksContent');
     const empty = document.getElementById('dailyPicksEmpty');
@@ -2245,6 +4305,9 @@ async function loadDailyPicks() {
     container.innerHTML = '<div class="card text-center py-8"><div class="loading-spinner" style="width:28px;height:28px;"></div><p class="text-subtle text-sm">加载中...</p></div>';
     empty.style.display = 'none';
     dateLine.textContent = '--';
+
+    loadDailyHeatRanking(false);
+    loadMorningNote(false);
 
     try {
         const res = await apiCall('GET', `${API_BASE}/api/daily-picks`);
@@ -2269,7 +4332,11 @@ async function runDailyPicks(strategy) {
             renderDailyPicks(payload);
         } else {
             await loadDailyPicks();
+            showToast('今日推荐已刷新', 'success');
+            return;
         }
+        loadDailyHeatRanking(false);
+        loadMorningNote(false);
         showToast('今日推荐已刷新', 'success');
     } catch (e) {
         showToast(e.message, 'error');
@@ -2302,6 +4369,7 @@ function renderDailyPicks(data) {
         const status = group.status || 'empty';
         const runTime = group.run_finished_at || group.run_started_at || '';
         const description = group.description || '';
+        const researchNote = strategy.key === 'qlib_model' ? 'Qlib模型组仅作量化研究与观察参考，不构成自动买入、卖出或调仓建议。' : '';
         const error = group.error || '';
         return `
             <section class="card fade-in">
@@ -2312,6 +4380,7 @@ function renderDailyPicks(data) {
                             <span class="strategy-pill">${escapeHtml(status)}</span>
                         </div>
                         ${description ? `<p class="text-xs text-subtle leading-relaxed">${escapeHtml(description)}</p>` : ''}
+                        ${researchNote ? `<p class="text-xs text-yellow-300 leading-relaxed mt-1">${escapeHtml(researchNote)}</p>` : ''}
                         ${error ? `<p class="text-xs text-red-300 mt-2 break-words">错误：${escapeHtml(error)}</p>` : ''}
                     </div>
                     <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-2 text-center lg:min-w-[420px]">
@@ -2340,6 +4409,292 @@ function renderDailyPicks(data) {
     }).join('');
 }
 
+// ===================== QUANT STRATEGIES =====================
+function quantModeLabel(item) {
+    return item && item.ai_status === 'success' ? '本地静态解析 + AI增强' : '本地静态解析';
+}
+
+function currentQuantStrategy() {
+    return state.quantStrategies.find(item => Number(item.id) === Number(state.selectedQuantStrategyId)) || null;
+}
+
+function startNewQuantStrategy() {
+    state.selectedQuantStrategyId = null;
+    const title = document.getElementById('quantTitleInput');
+    const platform = document.getElementById('quantPlatformSelect');
+    const source = document.getElementById('quantSourceInput');
+    if (title) title.value = '';
+    if (platform) platform.value = 'python_joinquant';
+    if (source) source.value = '';
+    renderQuantStrategiesList();
+    renderQuantAnalysis(null);
+}
+
+function selectQuantStrategy(id) {
+    const item = state.quantStrategies.find(strategy => Number(strategy.id) === Number(id));
+    if (!item) return;
+    state.selectedQuantStrategyId = item.id;
+    renderQuantStrategiesList();
+    fillQuantEditor(item);
+    renderQuantAnalysis(item);
+}
+
+function fillQuantEditor(item) {
+    const title = document.getElementById('quantTitleInput');
+    const platform = document.getElementById('quantPlatformSelect');
+    const source = document.getElementById('quantSourceInput');
+    if (title) title.value = item?.title || '';
+    if (platform) platform.value = item?.platform || 'python_joinquant';
+    if (source) source.value = item?.source_code || '';
+}
+
+function quantPayloadFromForm() {
+    const title = document.getElementById('quantTitleInput')?.value.trim() || '';
+    const platform = document.getElementById('quantPlatformSelect')?.value || 'python_joinquant';
+    const source = document.getElementById('quantSourceInput')?.value || '';
+    if (!title) throw new Error('请输入策略名称');
+    if (!source.trim()) throw new Error('请粘贴策略代码');
+    return { title, platform, source_code: source };
+}
+
+async function loadQuantStrategies(force = false) {
+    const list = document.getElementById('quantStrategiesList');
+    const empty = document.getElementById('quantStrategiesEmpty');
+    if (!list || !empty) return;
+    if (!force && state.quantStrategies.length) {
+        renderQuantStrategiesList();
+        return;
+    }
+    list.innerHTML = '<div class="text-center py-6"><div class="loading-spinner" style="width:24px;height:24px;"></div><p class="text-xs text-subtle">加载策略库...</p></div>';
+    empty.style.display = 'none';
+    try {
+        const res = await apiCall('GET', `${API_BASE}/api/quant-strategies`);
+        state.quantStrategies = Array.isArray(res.data) ? res.data : [];
+        if (state.selectedQuantStrategyId && !state.quantStrategies.some(item => Number(item.id) === Number(state.selectedQuantStrategyId))) {
+            state.selectedQuantStrategyId = null;
+        }
+        renderQuantStrategiesList();
+        if (state.selectedQuantStrategyId) {
+            const detail = await fetchQuantStrategyDetail(state.selectedQuantStrategyId);
+            if (detail) {
+                fillQuantEditor(detail);
+                renderQuantAnalysis(detail);
+            }
+        } else if (!state.quantStrategies.length) {
+            startNewQuantStrategy();
+        }
+    } catch (e) {
+        list.innerHTML = `<div class="text-center py-6"><p class="text-sm text-subtle">加载失败：${escapeHtml(e.message)}</p></div>`;
+    }
+}
+
+function renderQuantStrategiesList() {
+    const list = document.getElementById('quantStrategiesList');
+    const empty = document.getElementById('quantStrategiesEmpty');
+    if (!list || !empty) return;
+    empty.style.display = state.quantStrategies.length ? 'none' : 'block';
+    list.innerHTML = state.quantStrategies.map(item => {
+        const active = Number(item.id) === Number(state.selectedQuantStrategyId);
+        const statusClass = item.parse_status === 'success' ? 'text-green-300' : (item.parse_status === 'failed' ? 'text-red-300' : 'text-subtle');
+        const summary = item.summary || {};
+        return `
+            <button onclick="selectQuantStrategy(${Number(item.id)})" class="w-full text-left bg-card-light border ${active ? 'border-accent' : 'border-theme'} rounded-lg p-3 hover:border-accent transition-colors min-w-0">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="min-w-0">
+                        <p class="text-sm font-medium truncate">${escapeHtml(item.title || '未命名策略')}</p>
+                        <p class="text-[11px] text-subtle mt-1 truncate">${escapeHtml(quantModeLabel(item))}</p>
+                    </div>
+                    <span class="text-[11px] ${statusClass} shrink-0">${escapeHtml(item.parse_status || 'pending')}</span>
+                </div>
+                <p class="text-[11px] text-subtle mt-2">函数 ${formatDailyNumber(summary.function_count)} · 行数 ${formatDailyNumber(summary.line_count)}</p>
+                <p class="text-[11px] text-subtle mt-1 truncate">更新 ${formatDailyTime(item.updated_at)}</p>
+            </button>
+        `;
+    }).join('');
+}
+
+async function fetchQuantStrategyDetail(id) {
+    const res = await apiCall('GET', `${API_BASE}/api/quant-strategies/${id}`);
+    const detail = res.data;
+    const idx = state.quantStrategies.findIndex(item => Number(item.id) === Number(id));
+    if (idx >= 0) state.quantStrategies[idx] = detail;
+    return detail;
+}
+
+async function saveQuantStrategy() {
+    const btn = document.getElementById('quantSaveBtn');
+    const original = btn ? btn.innerHTML : '';
+    try {
+        const payload = quantPayloadFromForm();
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '解析中...';
+        }
+        const id = state.selectedQuantStrategyId;
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `${API_BASE}/api/quant-strategies/${id}` : `${API_BASE}/api/quant-strategies`;
+        const res = await apiCall(method, url, payload);
+        const item = res.data;
+        state.selectedQuantStrategyId = item.id;
+        await loadQuantStrategies(true);
+        fillQuantEditor(item);
+        renderQuantAnalysis(item);
+        showToast(id ? '策略已更新并解析' : '策略已保存并解析', 'success');
+    } catch (e) {
+        showToast(e.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = original;
+        }
+    }
+}
+
+async function reanalyzeQuantStrategy() {
+    const item = currentQuantStrategy();
+    if (!item) {
+        showToast('请先选择已保存的策略', 'warning');
+        return;
+    }
+    const btn = document.getElementById('quantReanalyzeBtn');
+    const original = btn ? btn.innerHTML : '';
+    try {
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '解析中...';
+        }
+        const res = await apiCall('POST', `${API_BASE}/api/quant-strategies/${item.id}/analyze`);
+        const detail = res.data;
+        state.selectedQuantStrategyId = detail.id;
+        await loadQuantStrategies(true);
+        fillQuantEditor(detail);
+        renderQuantAnalysis(detail);
+        showToast('策略已重新解析', 'success');
+    } catch (e) {
+        showToast(e.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = original;
+        }
+    }
+}
+
+async function deleteQuantStrategy() {
+    const item = currentQuantStrategy();
+    if (!item) {
+        showToast('请先选择要删除的策略', 'warning');
+        return;
+    }
+    if (!window.confirm(`删除策略「${item.title}」？此操作只删除这一条策略。`)) return;
+    try {
+        await apiCall('DELETE', `${API_BASE}/api/quant-strategies/${item.id}`);
+        state.selectedQuantStrategyId = null;
+        await loadQuantStrategies(true);
+        startNewQuantStrategy();
+        showToast('策略已删除', 'success');
+    } catch (e) {
+        showToast(e.message, 'error');
+    }
+}
+
+function renderQuantAnalysis(item) {
+    const status = document.getElementById('quantParseStatus');
+    const aiStatus = document.getElementById('quantAiStatus');
+    const content = document.getElementById('quantAnalysisContent');
+    if (!status || !aiStatus || !content) return;
+    if (!item) {
+        status.textContent = '未解析';
+        aiStatus.textContent = '本地静态解析';
+        content.innerHTML = `
+            <div class="bg-card-light rounded-lg p-5 text-center">
+                <p class="text-sm text-subtle">保存策略后查看解析结果</p>
+                <p class="text-xs text-subtle mt-2">首版支持 Python/聚宽代码，不执行用户代码。</p>
+            </div>
+        `;
+        return;
+    }
+    const parsed = item.parse_result || {};
+    status.textContent = item.parse_status || 'pending';
+    aiStatus.textContent = quantModeLabel(item);
+    content.innerHTML = `
+        ${renderQuantSummary(item, parsed)}
+        ${renderQuantSection('选股逻辑', parsed.selection_logic, '未识别到明确选股条件')}
+        ${renderQuantSection('买点逻辑', parsed.buy_logic, '未识别到明确买入条件')}
+        ${renderQuantSection('卖点与风控', [...normalizeTextList(parsed.sell_logic), ...normalizeTextList(parsed.risk_controls)], '未识别到明确卖点或风控')}
+        ${renderQuantTags('指标与数据依赖', [...normalizeTextList(parsed.indicators), ...normalizeTextList(parsed.data_dependencies)])}
+        ${renderQuantSection('风险与未识别项', [...normalizeTextList(parsed.unresolved_items), ...normalizeTextList(parsed.warnings)], '暂无额外风险提示')}
+        ${renderQuantAiAnalysis(item.ai_analysis)}
+    `;
+}
+
+function renderQuantSummary(item, parsed) {
+    const summary = parsed.summary || {};
+    return `
+        <div class="bg-card-light rounded-lg p-4">
+            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                <div class="min-w-0">
+                    <p class="text-sm font-semibold break-words">${escapeHtml(item.title || summary.title || '量化策略')}</p>
+                    <p class="text-xs text-subtle mt-1">平台 ${escapeHtml(item.platform || summary.platform || 'python_joinquant')} · 解析置信度 ${formatDailyConfidence(parsed.confidence)}</p>
+                </div>
+                <div class="grid grid-cols-3 gap-2 text-center shrink-0">
+                    <div class="bg-accent/20 rounded-md px-2 py-1.5">
+                        <p class="text-[11px] text-subtle">函数</p>
+                        <p class="text-xs font-mono">${formatDailyNumber(summary.function_count)}</p>
+                    </div>
+                    <div class="bg-accent/20 rounded-md px-2 py-1.5">
+                        <p class="text-[11px] text-subtle">行数</p>
+                        <p class="text-xs font-mono">${formatDailyNumber(summary.line_count)}</p>
+                    </div>
+                    <div class="bg-accent/20 rounded-md px-2 py-1.5">
+                        <p class="text-[11px] text-subtle">调用</p>
+                        <p class="text-xs font-mono">${formatDailyNumber(summary.call_count)}</p>
+                    </div>
+                </div>
+            </div>
+            ${normalizeTextList(summary.functions).length ? `<p class="text-[11px] text-subtle mt-3 break-words">函数：${normalizeTextList(summary.functions).map(escapeHtml).join('、')}</p>` : ''}
+        </div>
+    `;
+}
+
+function renderQuantSection(title, values, emptyText) {
+    const list = normalizeTextList(values);
+    return `
+        <div class="bg-card-light rounded-lg p-4">
+            <p class="text-xs font-semibold mb-2">${escapeHtml(title)}</p>
+            ${list.length
+                ? `<div class="space-y-1">${list.slice(0, 8).map(item => `<p class="text-xs text-subtle leading-relaxed break-words">• ${escapeHtml(item)}</p>`).join('')}</div>`
+                : `<p class="text-xs text-subtle">${escapeHtml(emptyText)}</p>`}
+        </div>
+    `;
+}
+
+function renderQuantTags(title, values) {
+    const list = normalizeTextList(values);
+    return `
+        <div class="bg-card-light rounded-lg p-4">
+            <p class="text-xs font-semibold mb-2">${escapeHtml(title)}</p>
+            ${list.length
+                ? `<div class="flex flex-wrap gap-1.5">${list.map(item => `<span class="strategy-pill">${escapeHtml(item)}</span>`).join('')}</div>`
+                : '<p class="text-xs text-subtle">暂无识别结果</p>'}
+        </div>
+    `;
+}
+
+function renderQuantAiAnalysis(value) {
+    if (!value || typeof value !== 'object') return '';
+    if (value.error) {
+        return renderQuantSection('AI 增强状态', [`AI 增强失败：${value.error}`], 'AI 增强未启用');
+    }
+    const list = [];
+    ['summary', 'selection_logic', 'buy_logic', 'sell_logic', 'risk_notes', 'disclaimer'].forEach(key => {
+        const item = value[key];
+        if (Array.isArray(item)) item.forEach(text => list.push(`${key}: ${text}`));
+        else if (item) list.push(`${key}: ${item}`);
+    });
+    return renderQuantSection('AI 增强解读', list, 'AI 增强未返回内容');
+}
+
 // ===================== ROUTER INIT =====================
 function handleHashChange() {
     const hash = window.location.hash || '#/login';
@@ -2348,6 +4703,7 @@ function handleHashChange() {
         '#/register': 'register',
         '#/analyze': 'analyze',
         '#/daily-picks': 'daily-picks',
+        '#/quant-strategies': 'quant-strategies',
         '#/watchlist': 'watchlist'
     };
     const page = pageMap[hash] || (state.token ? 'analyze' : 'login');
@@ -2358,6 +4714,11 @@ window.addEventListener('hashchange', handleHashChange);
 
 // ===================== INIT =====================
 async function init() {
+    const dailyHeatRefreshBtn = document.getElementById('dailyHeatRefreshBtn');
+    if (dailyHeatRefreshBtn && !dailyHeatRefreshBtn.dataset.bound) {
+        dailyHeatRefreshBtn.dataset.bound = '1';
+        dailyHeatRefreshBtn.addEventListener('click', () => loadDailyHeatRanking(true));
+    }
     // Check token
     if (state.token) {
         try {

@@ -478,17 +478,406 @@ def classify_market_cap(market_cap) -> str:
 
 # ─── 流量定价模型分析 ──────────────────────────────────────
 
+def _clamp_score(value, default: float = 50.0) -> int:
+    """Normalize a numeric score to 0-100."""
+    number = _to_float(value, default)
+    if number is None:
+        number = default
+    if 0 <= number <= 1:
+        number *= 100
+    return int(round(max(0, min(100, number))))
+
+
+def _first_present(*values):
+    for value in values:
+        if value is not None:
+            return value
+    return None
+
+
+def _score_from_signed(value, default: float = 50.0) -> int:
+    number = _to_float(value)
+    if number is None:
+        return _clamp_score(default)
+    if -1 <= number <= 1:
+        return _clamp_score((number + 1) * 50)
+    if -100 <= number <= 100:
+        return _clamp_score(number + 50 if number < 0 else number)
+    return _clamp_score(number, default)
+
+
+def _rank_heat_score(rank, total: int = 100, default: int = 50) -> int:
+    try:
+        rank_num = int(rank)
+        total_num = max(int(total or 100), 1)
+    except (TypeError, ValueError):
+        return default
+    if rank_num <= 0:
+        return default
+    percentile = 1 - ((rank_num - 1) / total_num)
+    return _clamp_score(20 + percentile * 80, default)
+
+
+def _rank_change_heat_score(rank_change, default: int = 50) -> int:
+    change = _to_float(rank_change)
+    if change is None:
+        return default
+    return _clamp_score(50 + change * 4, default)
+
+
+def _safe_len(value) -> int:
+    return len(value) if isinstance(value, (list, tuple, set, dict)) else 0
+
+
+def _normalize_stock_code(stock_info: dict) -> str:
+    raw_code = _first_present(stock_info.get("code"), stock_info.get("stock_code"), stock_info.get("symbol"))
+    if raw_code is None:
+        return ""
+    digits = "".join(ch for ch in str(raw_code) if ch.isdigit())
+    if not digits:
+        return ""
+    return digits[-6:].zfill(6)
+
+
+def _stock_market_prefix(code: str) -> str:
+    if str(code).startswith(("0", "2", "3")):
+        return "SZ"
+    if str(code).startswith(("4", "8", "9")):
+        return "BJ"
+    return "SH"
+
+
+def _discussion_links(stock_info: dict) -> dict:
+    code = _normalize_stock_code(stock_info)
+    if not code:
+        return {}
+    prefix = _stock_market_prefix(code)
+    return {
+        "eastmoney_guba": f"https://guba.eastmoney.com/list,{code}.html",
+        "eastmoney_quote": f"https://quote.eastmoney.com/{prefix.lower()}{code}.html",
+        "xueqiu": f"https://xueqiu.com/S/{prefix}{code}",
+    }
+
+
+def _build_heat_trend_profile(
+    current_score: int,
+    trend_score: int,
+    acceleration_score: int,
+    rank_change_score: int,
+    direct_external_available: bool,
+) -> dict:
+    current = _clamp_score(current_score)
+    trend = _clamp_score(trend_score)
+    acceleration = _clamp_score(acceleration_score)
+    rank_change = _clamp_score(rank_change_score)
+
+    pressure = (trend - 50) * 0.72 + (acceleration - 50) * 0.20 + (rank_change - 50) * 0.08
+    if not direct_external_available:
+        pressure *= 0.86
+    inferred_change = int(round(max(-35, min(35, pressure * 0.58))))
+    if inferred_change == 0:
+        if trend >= 58:
+            inferred_change = 3
+        elif trend <= 42:
+            inferred_change = -3
+
+    start = _clamp_score(current - inferred_change)
+    change = current - start
+    ratios = [0, 0.22, 0.48, 0.74, 1]
+    points = [_clamp_score(start + change * ratio) for ratio in ratios]
+    direction = "升温" if change > 0 else "降温" if change < 0 else "横盘"
+
+    return {
+        "start_score": start,
+        "current_score": current,
+        "change_score": change,
+        "points": points,
+        "direction": direction,
+        "window": "5d",
+        "basis": "代理热度",
+        "is_proxy": True,
+        "source": "东财排名变化/关键词/板块排行/成交代理",
+        "summary": f"代理热度 {start} → {current}（{change:+d}）",
+    }
+
+
+def _stock_topic_keywords(stock_info: dict, heat: dict) -> list[str]:
+    raw = heat.get("raw") if isinstance(heat.get("raw"), dict) else {}
+    stock_hints = heat.get("stock_ranking_hints") or {}
+    keyword_hits = stock_hints.get("keyword_hits") if isinstance(stock_hints, dict) else []
+    keywords = []
+    for item in keyword_hits if isinstance(keyword_hits, list) else []:
+        if isinstance(item, dict):
+            keyword = item.get("keyword") or item.get("name")
+        else:
+            keyword = item
+        if keyword:
+            keywords.append(str(keyword))
+    for text in [
+        stock_info.get("name"),
+        heat.get("sector_name"),
+        heat.get("industry"),
+        raw.get("sector_name") if isinstance(raw, dict) else None,
+    ]:
+        if text:
+            keywords.append(str(text))
+    return keywords
+
+
+def _topic_conversion_score(stock_info: dict, heat: dict) -> tuple[int, str, list[str]]:
+    sector_name = str(heat.get("sector_name") or "")
+    sector_type = str(heat.get("sector_type") or "")
+    stock_name = str(stock_info.get("name") or "")
+    stock_hints = heat.get("stock_ranking_hints") or {}
+    keyword_hits = stock_hints.get("keyword_hits") if isinstance(stock_hints, dict) else []
+
+    score = 40
+    reasons = []
+    if sector_name and "未知" not in sector_name:
+        score += 15
+        reasons.append(f"题材名称为「{sector_name}」，散户识别成本较低")
+    else:
+        score -= 12
+        reasons.append("板块题材暂未识别，转化率降级")
+
+    if sector_type == "concept":
+        score += 12
+        reasons.append("概念板块优先，短线叙事更容易传播")
+    elif sector_type == "industry":
+        score += 6
+        reasons.append("行业板块可识别，但短线传播通常弱于概念板块")
+
+    if keyword_hits:
+        score += min(14, _safe_len(keyword_hits) * 4)
+        reasons.append("东财热门关键词有命中")
+
+    recognizable_words = [
+        "智能", "人工智能", "ai", "算力", "deepseek", "机器人", "芯片", "半导体",
+        "国产", "替代", "信创", "军工", "航天", "卫星", "低空", "量子",
+        "新能源", "储能", "光伏", "数据", "传媒", "游戏", "医药",
+    ]
+    text_blob = " ".join(_stock_topic_keywords(stock_info, heat)).lower()
+    hot_hits = [word for word in recognizable_words if word.lower() in text_blob]
+    if hot_hits:
+        score += min(16, 6 + len(hot_hits) * 2)
+        reasons.append("题材包含高转化叙事：" + "、".join(hot_hits[:4]))
+    elif stock_name and sector_name and any(ch in stock_name for ch in sector_name[:4]):
+        score += 5
+        reasons.append("股票名称与题材存在直观关联")
+    else:
+        reasons.append("暂未看到特别强的名字/概念直观识别点")
+
+    if heat.get("external_heat_score", 50) >= 75:
+        score += 8
+        reasons.append("外部讨论代理热度较高，转化漏斗更顺")
+
+    label = "高转化" if score >= 75 else "中等转化" if score >= 55 else "低转化"
+    return _clamp_score(score), label, reasons
+
+
+def _risk_label_from_score(score: int, phase: str = "") -> str:
+    if phase == "退潮" or score >= 82:
+        return "退潮回避" if phase == "退潮" else "高潮风险"
+    if score >= 68:
+        return "高热分歧"
+    if score >= 50:
+        return "分歧观察"
+    if phase in ["启动", "冷启动"]:
+        return "低位升温"
+    if phase == "扩散":
+        return "扩散中"
+    return "低位升温"
+
+
+def _normalize_heat_context(stock_info: dict) -> dict:
+    heat_context = stock_info.get("heat_context") or {}
+    if not isinstance(heat_context, dict):
+        heat_context = {}
+    sector_ctx = heat_context.get("sector") if isinstance(heat_context.get("sector"), dict) else {}
+    capital_ctx = heat_context.get("capital") if isinstance(heat_context.get("capital"), dict) else {}
+    leader_ctx = heat_context.get("leader") if isinstance(heat_context.get("leader"), dict) else {}
+    stock_ranking_hints = heat_context.get("stock_ranking_hints") if isinstance(heat_context.get("stock_ranking_hints"), dict) else {}
+    board_ranking_hints = heat_context.get("board_ranking_hints") if isinstance(heat_context.get("board_ranking_hints"), dict) else {}
+    score_details = heat_context.get("score_details") if isinstance(heat_context.get("score_details"), dict) else {}
+    data_status = heat_context.get("data_status") if isinstance(heat_context.get("data_status"), dict) else {}
+
+    sector_name = _first_present(
+        heat_context.get("sector_name"),
+        sector_ctx.get("name"),
+        stock_info.get("sector_name"),
+        stock_info.get("industry"),
+    )
+    industry = _first_present(stock_info.get("industry"), heat_context.get("industry"), sector_ctx.get("industry"))
+
+    sector_heat_raw = _first_present(
+        heat_context.get("sector_heat_score"),
+        heat_context.get("sector_heat"),
+        heat_context.get("heat"),
+        sector_ctx.get("heat_score"),
+        sector_ctx.get("heat"),
+    )
+    external_heat_raw = _first_present(
+        heat_context.get("external_heat_score"),
+        heat_context.get("external_heat"),
+        heat_context.get("market_heat_score"),
+        heat_context.get("market_heat"),
+        sector_ctx.get("external_heat_score"),
+        sector_ctx.get("external_heat"),
+    )
+    capital_slope_raw = _first_present(
+        heat_context.get("capital_slope_score"),
+        heat_context.get("capital_slope"),
+        heat_context.get("fund_slope_score"),
+        heat_context.get("fund_slope"),
+        capital_ctx.get("slope_score"),
+        capital_ctx.get("slope"),
+    )
+    heat_acceleration_raw = _first_present(
+        heat_context.get("heat_acceleration_score"),
+        heat_context.get("heat_acceleration"),
+        heat_context.get("acceleration_score"),
+        heat_context.get("acceleration"),
+        sector_ctx.get("acceleration_score"),
+        sector_ctx.get("acceleration"),
+    )
+    exit_risk_raw = _first_present(
+        heat_context.get("exit_risk_score"),
+        heat_context.get("exit_risk"),
+        heat_context.get("risk_score"),
+        capital_ctx.get("exit_risk_score"),
+        capital_ctx.get("exit_risk"),
+    )
+
+    sector_heat_score = _clamp_score(sector_heat_raw)
+    external_heat_score = _clamp_score(external_heat_raw)
+    capital_slope_score = _score_from_signed(capital_slope_raw)
+    heat_acceleration_score = _score_from_signed(heat_acceleration_raw)
+    exit_risk_score = _clamp_score(exit_risk_raw, 35)
+
+    rank = _first_present(
+        heat_context.get("sector_rank"),
+        heat_context.get("rank"),
+        sector_ctx.get("rank"),
+        leader_ctx.get("rank"),
+    )
+    rank_total = _first_present(
+        heat_context.get("sector_rank_total"),
+        heat_context.get("rank_total"),
+        sector_ctx.get("rank_total"),
+        leader_ctx.get("rank_total"),
+    )
+    rank_hint = _first_present(heat_context.get("rank_hint"), leader_ctx.get("rank_hint"))
+    if not rank_hint and rank is not None:
+        rank_hint = f"板块排名第{rank}" + (f"/{rank_total}" if rank_total else "")
+
+    leader_label = _first_present(heat_context.get("leader_label"), leader_ctx.get("label"))
+    board_inner_rank = _first_present(
+        heat_context.get("board_inner_rank"),
+        heat_context.get("rank_in_sector"),
+        heat_context.get("stock_rank_in_sector"),
+        leader_ctx.get("board_inner_rank"),
+        leader_ctx.get("rank_in_sector"),
+        leader_ctx.get("stock_rank_in_sector"),
+    )
+    board_inner_rank_total = _first_present(
+        heat_context.get("board_inner_rank_total"),
+        heat_context.get("rank_in_sector_total"),
+        leader_ctx.get("board_inner_rank_total"),
+        leader_ctx.get("rank_in_sector_total"),
+    )
+
+    return {
+        "sector_name": sector_name or "未知",
+        "industry": industry or "未知",
+        "sector_heat_score": sector_heat_score,
+        "sector_heat_window": _first_present(
+            heat_context.get("sector_heat_window"),
+            heat_context.get("window"),
+            sector_ctx.get("window"),
+        ),
+        "sector_heat_date": _first_present(
+            heat_context.get("sector_heat_date"),
+            heat_context.get("date"),
+            sector_ctx.get("date"),
+        ),
+        "sector_source": _first_present(
+            heat_context.get("sector_source"),
+            heat_context.get("source"),
+            sector_ctx.get("source"),
+        ),
+        "sector_confidence": _first_present(
+            heat_context.get("sector_confidence"),
+            heat_context.get("confidence"),
+            sector_ctx.get("confidence"),
+        ),
+        "sector_type": _first_present(
+            heat_context.get("sector_type"),
+            sector_ctx.get("type"),
+            sector_ctx.get("sector_type"),
+        ),
+        "external_heat_score": external_heat_score,
+        "capital_slope_score": capital_slope_score,
+        "heat_acceleration_score": heat_acceleration_score,
+        "exit_risk_score": exit_risk_score,
+        "sector_rank": rank,
+        "sector_rank_total": rank_total,
+        "rank_hint": rank_hint or "暂无板块排名",
+        "leader_label": leader_label,
+        "board_inner_rank": board_inner_rank,
+        "board_inner_rank_total": board_inner_rank_total,
+        "stock_ranking_hints": stock_ranking_hints,
+        "board_ranking_hints": board_ranking_hints,
+        "score_details": score_details,
+        "data_status": data_status,
+        "warnings": data_status.get("warnings", []) if isinstance(data_status.get("warnings"), list) else [],
+        "raw": heat_context,
+    }
+
+
+def _append_source_once(sources: list[dict], key: str, label: str, score: Optional[float] = None, status: str = "ok") -> None:
+    if any(item.get("key") == key for item in sources):
+        return
+    source = {"key": key, "label": label, "status": status}
+    if score is not None:
+        source["score"] = _clamp_score(score)
+    sources.append(source)
+
+
+def _build_retail_calculation_sources(
+    heat: dict,
+    eastmoney_rank,
+    keyword_hits: list,
+    snowball_hits: list,
+    amount_proxy_ratio,
+    volume_burst: float,
+) -> list[dict]:
+    sources: list[dict] = []
+    sector_source = str(heat.get("sector_source") or "")
+    if heat.get("sector_heat_score") is not None and heat.get("sector_name") != "未知":
+        _append_source_once(sources, "sector_board", "板块榜单", heat.get("sector_heat_score"))
+    if "eastmoney" in sector_source:
+        _append_source_once(sources, "eastmoney_board", "东财板块/人气", heat.get("external_heat_score"))
+    if eastmoney_rank or keyword_hits:
+        _append_source_once(sources, "eastmoney_hot", "东财人气/关键词", heat.get("external_heat_score"))
+    if snowball_hits:
+        _append_source_once(sources, "xueqiu", "雪球关注", 55 + _safe_len(snowball_hits) * 12)
+    if amount_proxy_ratio is not None or volume_burst:
+        _append_source_once(sources, "local_price_volume", "本地成交/量能", heat.get("capital_slope_score"), "fallback")
+    if "ths_hot" in sector_source or "ths_hot_reason" in sector_source:
+        _append_source_once(sources, "ths_hot_reason", "同花顺题材归因", heat.get("external_heat_score"), "fallback")
+    return sources
+
+
 def analyze_flow_signals(df: pd.DataFrame, stock_info: dict) -> dict:
     """
-    流量信号评分（0-100）
-    基于量能爆发度、价格动量、波动率、换手率、布林带位置综合评估
+    retail_attention_v2：散户注意力与题材接盘潜力评分。
+
+    量价指标只作为资金承接的辅助证据，不再作为“流量”主评分。
     """
     close = df["close"]
     volume = df["volume"]
-    high = df["high"]
-    low = df["low"]
 
-    # a) 量能爆发度（权重30%）
+    # 辅助承接证据：成交量/成交额代理。它们不直接等同于流量。
     if len(volume) >= 20:
         vol_5 = float(volume.tail(5).mean())
         vol_20 = float(volume.tail(20).mean())
@@ -496,22 +885,11 @@ def analyze_flow_signals(df: pd.DataFrame, stock_info: dict) -> dict:
     else:
         volume_burst = 1.0
 
-    if volume_burst >= 2.0:
-        vol_score = 100
-    elif volume_burst >= 1.5:
-        vol_score = 70
-    elif volume_burst >= 1.0:
-        vol_score = 40
-    else:
-        vol_score = 20
-
-    # b) 价格动量（权重25%）
     if len(close) >= 6:
         price_momentum = round(((float(close.iloc[-1]) / float(close.iloc[-6])) - 1) * 100, 2)
     else:
         price_momentum = 0.0
 
-    # 连续上涨天数
     up_days = 0
     for i in range(-1, max(-6, -len(close)), -1):
         if float(close.iloc[i]) > float(close.iloc[i - 1]):
@@ -519,100 +897,220 @@ def analyze_flow_signals(df: pd.DataFrame, stock_info: dict) -> dict:
         else:
             break
 
-    if price_momentum > 15 or up_days >= 4:
-        momentum_score = 100
-    elif price_momentum > 8 or up_days >= 3:
-        momentum_score = 80
-    elif price_momentum > 3:
-        momentum_score = 60
-    elif price_momentum > 0:
-        momentum_score = 40
-    else:
-        momentum_score = 20
-
-    # c) 波动率（权重20%）
     if len(close) >= 11:
         returns = close.pct_change().dropna().tail(10)
         volatility = round(float(returns.std()) * 100, 2)
     else:
         volatility = 1.0
 
-    if volatility > 4:
-        vol_score2 = 100
-    elif volatility > 2.5:
-        vol_score2 = 70
-    elif volatility > 1.5:
-        vol_score2 = 50
-    else:
-        vol_score2 = 25
+    amount_proxy_ratio = None
+    if "amount" in df.columns and len(df) >= 8:
+        amount = pd.to_numeric(df["amount"], errors="coerce").dropna()
+        if len(amount) >= 8:
+            recent_amount = float(amount.tail(3).mean())
+            previous_amount = float(amount.iloc[-8:-3].mean())
+            amount_proxy_ratio = recent_amount / previous_amount if previous_amount > 0 else None
+    volume_proxy_score = _clamp_score(50 + (volume_burst - 1) * 30)
+    amount_proxy_score = _clamp_score(50 + ((amount_proxy_ratio or 1) - 1) * 30)
 
-    # d) 换手率水平（权重15%）
-    turnover = stock_info.get("turnover_rate")
-    if turnover is not None and turnover > 0:
-        if turnover > 10:
-            turn_score = 100
-        elif turnover > 5:
-            turn_score = 70
-        elif turnover > 2:
-            turn_score = 45
-        else:
-            turn_score = 20
-    else:
-        turn_score = 50  # 无数据给中性分
+    heat = _normalize_heat_context(stock_info)
+    sector_heat_score = heat["sector_heat_score"]
+    external_heat_score = heat["external_heat_score"]
+    provider_capital_slope_score = heat["capital_slope_score"]
+    heat_acceleration_score = heat["heat_acceleration_score"]
+    stock_hints = heat.get("stock_ranking_hints") or {}
+    eastmoney_rank = stock_hints.get("eastmoney_hot_rank")
+    eastmoney_rank_change = stock_hints.get("eastmoney_rank_change")
+    keyword_hits = stock_hints.get("keyword_hits") if isinstance(stock_hints.get("keyword_hits"), list) else []
+    snowball_hits = stock_hints.get("snowball_hits") if isinstance(stock_hints.get("snowball_hits"), list) else []
 
-    # e) 距离布林带位置（权重10%）
-    boll_data = calc_bollinger(close)
-    if boll_data["upper"] > 0 and boll_data["upper"] != boll_data["lower"]:
-        boll_width = boll_data["upper"] - boll_data["lower"]
-        boll_position = (float(close.iloc[-1]) - boll_data["lower"]) / boll_width
-        if boll_position > 0.85:
-            boll_score = 90  # 接近上轨=流量高潮
-        elif boll_position > 0.5:
-            boll_score = 60
-        elif boll_position > 0.15:
-            boll_score = 35
-        else:
-            boll_score = 20  # 接近下轨=流量低谷
-    else:
-        boll_score = 50
+    eastmoney_rank_score = _rank_heat_score(eastmoney_rank, 100, 45 if not eastmoney_rank else 50)
+    eastmoney_rank_change_score = _rank_change_heat_score(eastmoney_rank_change, 50)
+    keyword_score = _clamp_score(45 + _safe_len(keyword_hits) * 8)
+    snowball_score = _clamp_score(45 + _safe_len(snowball_hits) * 12)
 
-    # 加权总分
-    flow_score = round(vol_score * 0.30 + momentum_score * 0.25 + vol_score2 * 0.20 + turn_score * 0.15 + boll_score * 0.10)
-    flow_score = max(0, min(100, flow_score))
+    direct_external_available = bool(eastmoney_rank or keyword_hits or snowball_hits)
+    calculation_sources = _build_retail_calculation_sources(
+        heat,
+        eastmoney_rank,
+        keyword_hits,
+        snowball_hits,
+        amount_proxy_ratio,
+        volume_burst,
+    )
+    retail_attention_score = round(
+        external_heat_score * 0.40
+        + sector_heat_score * 0.24
+        + eastmoney_rank_score * 0.16
+        + keyword_score * 0.10
+        + snowball_score * 0.10
+    )
+    if not direct_external_available:
+        retail_attention_score = round(retail_attention_score * 0.84 + 42 * 0.16)
+    retail_attention_score = _clamp_score(retail_attention_score)
 
-    # 流量等级
-    if flow_score >= 80:
-        flow_level = "极高"
-    elif flow_score >= 65:
-        flow_level = "高"
-    elif flow_score >= 45:
-        flow_level = "中等"
-    elif flow_score >= 25:
-        flow_level = "低"
-    else:
-        flow_level = "极低"
+    topic_conversion_score, topic_conversion_level, topic_conversion_reasons = _topic_conversion_score(stock_info, heat)
+    heat_trend_score = round(
+        heat_acceleration_score * 0.50
+        + eastmoney_rank_change_score * 0.25
+        + retail_attention_score * 0.15
+        + sector_heat_score * 0.10
+    )
+    heat_trend_score = _clamp_score(heat_trend_score)
+    heat_trend_profile = _build_heat_trend_profile(
+        retail_attention_score,
+        heat_trend_score,
+        heat_acceleration_score,
+        eastmoney_rank_change_score,
+        direct_external_available,
+    )
 
-    # 流量阶段
-    if volume_burst >= 2.0 and price_momentum > 5:
-        flow_phase = "爆发"
-    elif volume_burst >= 1.5 or price_momentum > 3:
-        flow_phase = "放大"
-    elif volume_burst >= 1.0:
-        flow_phase = "正常"
+    capital_acceptance_score = round(
+        provider_capital_slope_score * 0.62
+        + amount_proxy_score * 0.20
+        + volume_proxy_score * 0.12
+        + max(0, 100 - volatility * 8) * 0.06
+    )
+    capital_acceptance_score = _clamp_score(capital_acceptance_score)
+
+    high_attention = max(retail_attention_score, external_heat_score, sector_heat_score)
+    saturation_risk = max(0, high_attention - 76) * 1.15
+    capital_drag_risk = max(0, 55 - capital_acceptance_score) * 0.82
+    trend_drag_risk = max(0, 45 - heat_trend_score) * 0.72
+    price_overheat_risk = max(0, price_momentum - 18) * 1.1 + max(0, up_days - 4) * 4
+    exit_risk_score = _clamp_score(
+        heat["exit_risk_score"] * 0.34
+        + saturation_risk
+        + capital_drag_risk
+        + trend_drag_risk
+        + price_overheat_risk
+    )
+
+    takeover_raw = round(
+        retail_attention_score * 0.32
+        + heat_trend_score * 0.20
+        + topic_conversion_score * 0.20
+        + capital_acceptance_score * 0.20
+        + sector_heat_score * 0.08
+    )
+    if exit_risk_score >= 72 and capital_acceptance_score <= 45:
+        takeover_raw -= 18
+    elif exit_risk_score >= 68:
+        takeover_raw -= 8
+    takeover_potential_score = _clamp_score(takeover_raw)
+
+    if retail_attention_score >= 78 and heat_trend_score >= 60:
+        attention_direction = "扩散"
+    elif retail_attention_score >= 58 and heat_trend_score >= 52:
+        attention_direction = "升温"
+    elif high_attention >= 76 and (capital_acceptance_score <= 45 or heat_trend_score <= 42):
+        attention_direction = "高潮"
+    elif heat_trend_score <= 38 and capital_acceptance_score <= 45:
+        attention_direction = "退潮"
     else:
+        attention_direction = "横盘"
+
+    if takeover_potential_score >= 80:
+        flow_level = "强"
+    elif takeover_potential_score >= 65:
+        flow_level = "较强"
+    elif takeover_potential_score >= 45:
+        flow_level = "中性"
+    elif takeover_potential_score >= 30:
+        flow_level = "偏弱"
+    else:
+        flow_level = "弱"
+
+    if capital_acceptance_score <= 40:
         flow_phase = "萎缩"
+    elif capital_acceptance_score >= 65:
+        flow_phase = "承接增强"
+    else:
+        flow_phase = "承接中性"
 
-    # 文字描述
-    vol_desc_word = "爆发" if volume_burst >= 2.0 else "放大" if volume_burst >= 1.5 else "正常" if volume_burst >= 1.0 else "萎缩"
-    flow_desc = f"成交量{vol_desc_word}{volume_burst}倍，近5日涨幅{price_momentum:+.1f}%，波动率{volatility:.1f}%，流量处于{flow_phase}阶段"
+    source_labels = []
+    if eastmoney_rank:
+        source_labels.append(f"东财人气排名{eastmoney_rank}")
+    if eastmoney_rank_change is not None:
+        source_labels.append(f"东财排名变化{eastmoney_rank_change:+g}")
+    if keyword_hits:
+        source_labels.append(f"热门关键词{_safe_len(keyword_hits)}个")
+    if snowball_hits:
+        source_labels.append(f"雪球关注命中{_safe_len(snowball_hits)}条")
+    for source in calculation_sources:
+        label = source.get("label")
+        if label and label not in "；".join(source_labels):
+            source_labels.append(f"{label}参与计算")
+    if not source_labels:
+        source_labels.append("外部讨论数据不足，采用板块榜单与本地代理")
+
+    warnings = list(heat.get("warnings") or [])
+    if not direct_external_available:
+        warnings.append("股吧/雪球直接讨论趋势不足，散户讨论热度使用东财热榜、板块排行和本地代理降级")
+    warnings.append("抖音 provider 未接入，本次不使用抖音热度")
+
+    flow_desc = (
+        f"散户讨论热度{retail_attention_score}，板块热度{sector_heat_score}，"
+        f"热度趋势{heat_trend_score}，题材转化{topic_conversion_score}，"
+        f"资金承接{capital_acceptance_score}，退出风险{exit_risk_score}。"
+        f"数据口径：{'；'.join(source_labels)}。"
+    )
 
     return {
-        "flow_score": flow_score,
+        "model_version": "retail_attention_v2",
+        "flow_score": takeover_potential_score,
         "flow_level": flow_level,
+        "takeover_potential_score": takeover_potential_score,
+        "retail_attention_score": retail_attention_score,
+        "topic_conversion_score": topic_conversion_score,
+        "topic_conversion_level": topic_conversion_level,
+        "topic_conversion_reasons": topic_conversion_reasons,
+        "capital_acceptance_score": capital_acceptance_score,
+        "capital_slope_score": capital_acceptance_score,
+        "capital_slope_proxy_score": provider_capital_slope_score,
+        "capital_proxy_source": "资金流/成交额代理",
+        "heat_trend_score": heat_trend_score,
+        "heat_acceleration_score": heat_trend_score,
+        "heat_acceleration_proxy_score": heat_acceleration_score,
+        "heat_trend_profile": heat_trend_profile,
+        "attention_direction": attention_direction,
+        "eastmoney_hot_rank": eastmoney_rank,
+        "eastmoney_rank_change": eastmoney_rank_change,
+        "eastmoney_rank_score": eastmoney_rank_score,
+        "keyword_hits": keyword_hits,
+        "snowball_hits": snowball_hits,
+        "eastmoney_guba_status": (
+            "proxy_by_eastmoney_hot_rank"
+            if eastmoney_rank or keyword_hits
+            else "fallback_used"
+            if any(source.get("key") in {"sector_board", "eastmoney_board", "local_price_volume", "ths_hot_reason"} for source in calculation_sources)
+            else "unavailable"
+        ),
+        "xueqiu_status": "proxy_available" if snowball_hits else "unavailable",
+        "douyin_status": "unavailable",
+        "available_sources": calculation_sources,
+        "calculation_sources": calculation_sources,
+        "source_labels": source_labels,
+        "data_warnings": warnings,
+        "legacy_flow_score": None,
         "volume_burst": volume_burst,
+        "amount_proxy_ratio": round(amount_proxy_ratio, 3) if amount_proxy_ratio else None,
+        "amount_proxy_score": amount_proxy_score,
+        "volume_proxy_score": volume_proxy_score,
         "price_momentum": price_momentum,
         "volatility": volatility,
         "up_days": up_days,
+        "sector_heat_score": sector_heat_score,
+        "external_heat_score": external_heat_score,
+        "exit_risk_score": exit_risk_score,
+        "heat_quality_score": round(
+            retail_attention_score * 0.38
+            + heat_trend_score * 0.26
+            + topic_conversion_score * 0.18
+            + capital_acceptance_score * 0.18
+        ),
+        "sector_name": heat["sector_name"],
+        "industry": heat["industry"],
         "flow_phase": flow_phase,
         "flow_desc": flow_desc,
     }
@@ -620,67 +1118,72 @@ def analyze_flow_signals(df: pd.DataFrame, stock_info: dict) -> dict:
 
 def analyze_timing(df: pd.DataFrame, flow_signals: dict) -> dict:
     """
-    时机判断：基于流量信号判断当前处于什么阶段
-    启动/加速/分歧/退潮
+    视频框架下的题材周期判断：冷启动/启动/扩散/高潮/分歧/退潮。
     """
-    close = df["close"]
-    volume = df["volume"]
+    retail_attention_score = flow_signals.get("retail_attention_score", flow_signals.get("external_heat_score", 50))
+    topic_conversion_score = flow_signals.get("topic_conversion_score", 50)
+    capital_acceptance_score = flow_signals.get("capital_acceptance_score", flow_signals.get("capital_slope_score", 50))
+    heat_trend_score = flow_signals.get("heat_trend_score", flow_signals.get("heat_acceleration_score", 50))
+    sector_heat_score = flow_signals.get("sector_heat_score", 50)
+    external_heat_score = flow_signals.get("external_heat_score", 50)
+    exit_risk_score = flow_signals.get("exit_risk_score", 35)
+    direction = flow_signals.get("attention_direction") or "横盘"
 
-    vb = flow_signals.get("volume_burst", 1.0)
-    pm = flow_signals.get("price_momentum", 0)
-    up_days = flow_signals.get("up_days", 0)
-    vol = flow_signals.get("volatility", 1.0)
+    high_heat = max(retail_attention_score, sector_heat_score, external_heat_score) >= 76
+    weak_capital = capital_acceptance_score <= 42
+    weak_trend = heat_trend_score <= 40
+    low_heat = max(retail_attention_score, sector_heat_score, external_heat_score) < 45
 
-    # 量能变化趋势（近3日量vs前3日量）
-    if len(volume) >= 8:
-        recent_vol = float(volume.iloc[-3:].mean())
-        prev_vol = float(volume.iloc[-6:-3].mean())
-        vol_trend = recent_vol / prev_vol if prev_vol > 0 else 1.0
-    else:
-        vol_trend = 1.0
-
-    # 价格趋势（近3日收盘价方向）
-    if len(close) >= 4:
-        price_trend_up = float(close.iloc[-1]) > float(close.iloc[-4])
-    else:
-        price_trend_up = True
-
-    # 阶段判定
-    if vb >= 2.0 and pm > 8 and up_days >= 3:
-        phase = "加速"
-        phase_score = 80
-        phase_desc = "量能持续放大，价格快速上涨，流量处于加速阶段"
-        hold_advice = "可持有，关注量能是否持续放大"
-        exit_signal = "量能萎缩跌破前一日低点时减仓，跌破5日均线时清仓"
-    elif vb >= 1.5 and pm > 3 and vol_trend > 1.2:
-        phase = "启动"
-        phase_score = 60
-        phase_desc = "量能开始放大，价格刚开始上涨，流量从低位起来"
-        hold_advice = "可轻仓试探，确认趋势后加仓"
-        exit_signal = "跌破启动前低点止损"
-    elif vb >= 2.0 and (pm < 3 or not price_trend_up) and vol > 3:
+    if high_heat and (weak_capital or exit_risk_score >= 72):
         phase = "分歧"
-        phase_score = 40
-        phase_desc = "量能最大但价格震荡分化，流量见顶信号"
-        hold_advice = "谨慎持有，随时准备撤退"
-        exit_signal = "放量滞涨即减仓，缩量破位即清仓"
-    elif vb < 1.2 and pm < 0:
+        phase_score = 38
+        phase_desc = "散户讨论热度仍高，但资金承接或热度趋势转弱，按高热分歧处理"
+        hold_advice = "先看承接是否恢复，不把高热度直接理解为继续升温"
+        exit_signal = "热榜高位但资金承接继续走弱、前排强后排弱或热度加速度下滑时，视为退出风险抬升"
+    elif high_heat and heat_trend_score >= 68 and exit_risk_score >= 62:
+        phase = "高潮"
+        phase_score = 55
+        phase_desc = "散户可见度已经很高，新增接盘资金可能接近流量高潮"
+        hold_advice = "重点观察热度是否开始失速，以及资金承接是否还能维持"
+        exit_signal = "外部讨论极高后排名不再上升、承接转弱或板块内掉队扩散时，视为高潮风险"
+    elif heat_trend_score >= 62 and retail_attention_score >= 62 and sector_heat_score >= 55 and capital_acceptance_score >= 50:
+        phase = "扩散" if retail_attention_score >= 72 or sector_heat_score >= 70 else "启动"
+        phase_score = 76 if phase == "扩散" else 64
+        phase_desc = "散户讨论、板块热度与资金承接同向抬升，题材处于扩散/启动链路"
+        hold_advice = "观察热榜、股吧/雪球代理和板块内跟随数量能否继续扩散"
+        exit_signal = "若热度仍升但资金承接先转弱，阶段会从扩散切到分歧"
+    elif low_heat and heat_trend_score >= 52:
+        phase = "冷启动"
+        phase_score = 48
+        phase_desc = "绝对热度不高，但讨论/关注代理开始抬升，仍属早期观察"
+        hold_advice = "先确认是否能进入东财/雪球等散户可见入口"
+        exit_signal = "若热度趋势回落且板块排行无改善，则冷启动失败"
+    elif weak_trend and capital_acceptance_score <= 45:
         phase = "退潮"
-        phase_score = 20
-        phase_desc = "量能萎缩，价格下跌，流量消散"
-        hold_advice = "不宜参与，等待新流量信号"
-        exit_signal = "已无仓位则观望，有仓位逢反弹减仓"
+        phase_score = 18
+        phase_desc = "讨论热度趋势与资金承接同步走弱，题材进入退潮观察区"
+        hold_advice = "等待新的讨论增量和承接恢复，不用旧热度解释新方向"
+        exit_signal = "热度、承接和板块排行同步回落时，按退潮处理"
     else:
         phase = "启动"
-        phase_score = 55
-        phase_desc = "流量信号中性，暂处于启动初期或过渡阶段"
-        hold_advice = "观望为主，等待更明确信号"
-        exit_signal = "跌破近期低点止损"
+        phase_score = 54
+        phase_desc = "散户注意力有一定基础，但趋势、承接或题材转化还未形成强共振"
+        hold_advice = "继续观察讨论热度是否进入更高能见度入口"
+        exit_signal = "若外部热度抬升失败且资金承接转弱，阶段会降级"
+
+    risk_warning = _risk_label_from_score(exit_risk_score, phase)
 
     return {
         "phase": phase,
         "phase_score": phase_score,
         "phase_desc": phase_desc,
+        "attention_direction": direction if phase not in ["分歧", "退潮"] else phase,
+        "risk_warning": risk_warning,
+        "retail_attention_score": retail_attention_score,
+        "topic_conversion_score": topic_conversion_score,
+        "capital_acceptance_score": capital_acceptance_score,
+        "heat_trend_score": heat_trend_score,
+        "exit_risk_score": exit_risk_score,
         "hold_advice": hold_advice,
         "exit_signal": exit_signal,
     }
@@ -688,21 +1191,26 @@ def analyze_timing(df: pd.DataFrame, flow_signals: dict) -> dict:
 
 def analyze_leadership(df: pd.DataFrame, stock_info: dict) -> dict:
     """
-    龙头潜力评估：先涨为王、名字辨识度、市值适中、量价配合
+    板块内位置评估：高热板块内的前排/后排，而不是单纯技术强弱。
     """
     close = df["close"]
     volume = df["volume"]
     market_cap = stock_info.get("market_cap")
     stock_name = stock_info.get("name", "")
+    heat = _normalize_heat_context(stock_info)
+    sector_heat_score = heat["sector_heat_score"]
+    external_heat_score = heat["external_heat_score"]
+    capital_slope_score = heat["capital_slope_score"]
+    heat_acceleration_score = heat["heat_acceleration_score"]
+    exit_risk_score = heat["exit_risk_score"]
+    stock_hints = heat.get("stock_ranking_hints") or {}
 
-    # 1) 先涨为王 — 近5日涨幅
     if len(close) >= 6:
         change_5d = round(((float(close.iloc[-1]) / float(close.iloc[-6])) - 1) * 100, 2)
     else:
         change_5d = 0
-    first_mover = change_5d > 5  # 涨超5%算先涨
+    first_mover = change_5d > 5
 
-    # 2) 名字辨识度（简单规则匹配）
     hot_keywords = [
         "智能", "科技", "新能源", "芯片", "半导体", "锂电", "光伏",
         "数据", "信息", "网络", "通信", "生物", "医药", "材料",
@@ -717,7 +1225,6 @@ def analyze_leadership(df: pd.DataFrame, stock_info: dict) -> dict:
     else:
         name_recognition = "低"
 
-    # 3) 市值适中（50-500亿最佳）
     if market_cap is not None:
         cap_yi = market_cap if market_cap is not None else 0
         market_cap_fit = 30 <= cap_yi <= 800
@@ -725,7 +1232,6 @@ def analyze_leadership(df: pd.DataFrame, stock_info: dict) -> dict:
         cap_yi = 0
         market_cap_fit = False
 
-    # 4) 量价配合 — 价涨量增
     if len(close) >= 5 and len(volume) >= 5:
         price_up = float(close.iloc[-1]) > float(close.iloc[-5])
         vol_up = float(volume.iloc[-1]) > float(volume.iloc[-5])
@@ -733,64 +1239,99 @@ def analyze_leadership(df: pd.DataFrame, stock_info: dict) -> dict:
     else:
         vol_price_harmony = False
 
-    # 综合评分
-    score = 0
-    # 先涨（35分）
-    if change_5d > 15:
-        score += 35
-    elif change_5d > 10:
-        score += 28
-    elif change_5d > 5:
-        score += 20
-    elif change_5d > 0:
-        score += 10
+    topic_conversion_score, _, _ = _topic_conversion_score(stock_info, heat)
+    eastmoney_hot_rank = stock_hints.get("eastmoney_hot_rank")
+    retail_rank_score = _rank_heat_score(eastmoney_hot_rank, 100, 45)
+    first_mover_score = _clamp_score(45 + change_5d * 2.8)
+    name_score = {"高": 86, "中等": 64, "低": 42}.get(name_recognition, 42)
+    cap_score = 72 if market_cap_fit else 45
+    capital_score = _clamp_score(capital_slope_score)
+
+    score = round(
+        sector_heat_score * 0.22
+        + external_heat_score * 0.14
+        + retail_rank_score * 0.16
+        + first_mover_score * 0.16
+        + topic_conversion_score * 0.12
+        + capital_score * 0.10
+        + name_score * 0.06
+        + cap_score * 0.04
+    )
+    if exit_risk_score >= 70 and capital_score <= 45:
+        score -= 12
+    score = _clamp_score(score)
+
+    board_inner_rank = heat.get("board_inner_rank")
+    board_inner_rank_total = heat.get("board_inner_rank_total")
+    try:
+        board_inner_rank_number = int(board_inner_rank) if board_inner_rank is not None else None
+    except (TypeError, ValueError):
+        board_inner_rank_number = None
+
+    high_topic = max(sector_heat_score, external_heat_score) >= 65
+    ranking_available = board_inner_rank_number is not None
+    if not high_topic:
+        leader_label = "不在主线"
+    elif exit_risk_score >= 72 and capital_score <= 45:
+        leader_label = "高热分歧"
+    elif ranking_available and board_inner_rank_number == 1 and score >= 70 and capital_score >= 50:
+        leader_label = "龙一候选"
+    elif ranking_available and board_inner_rank_number <= 3 and score >= 62:
+        leader_label = "龙二候选"
+    elif ranking_available and board_inner_rank_number <= 8:
+        leader_label = "前排跟随"
+    elif ranking_available:
+        leader_label = "后排补涨"
+    elif high_topic and first_mover and retail_rank_score >= 70 and capital_score >= 50:
+        leader_label = "前排跟随"
+    elif high_topic and change_5d > 0:
+        leader_label = "后排补涨"
     else:
-        score += 0
+        leader_label = "不在主线"
 
-    # 名字辨识度（20分）
-    if name_recognition == "高":
-        score += 20
-    elif name_recognition == "中等":
-        score += 12
+    if leader_label in ["龙一候选", "龙二候选"]:
+        leadership_level = "板块核心"
+    elif leader_label in ["前排跟随", "后排补涨"]:
+        leadership_level = "板块跟随"
+    elif leader_label == "高热分歧":
+        leadership_level = "风险前排"
     else:
-        score += 5
+        leadership_level = "不在主线"
 
-    # 市值（20分）
-    score += 20 if market_cap_fit else 8
-
-    # 量价配合（25分）
-    score += 25 if vol_price_harmony else 5
-
-    score = max(0, min(100, score))
-
-    if score >= 80:
-        leadership_level = "极高"
-    elif score >= 65:
-        leadership_level = "较高"
-    elif score >= 45:
-        leadership_level = "中等"
-    elif score >= 25:
-        leadership_level = "较低"
-    else:
-        leadership_level = "极低"
-
-    # 描述
     parts = []
-    if first_mover:
-        parts.append(f"近5日涨{change_5d:.1f}%，先涨为王")
-    else:
-        parts.append(f"近5日涨{change_5d:.1f}%，暂未领先")
+    parts.append(f"板块热度{sector_heat_score}、外部讨论{external_heat_score}")
+    parts.append(f"近5日涨{change_5d:.1f}%，{'先于题材有表现' if first_mover else '暂未体现明显前排涨幅'}")
     parts.append(f"名字辨识度{name_recognition}")
-    if market_cap_fit:
-        parts.append(f"市值{cap_yi:.0f}亿，适中")
+    parts.append(f"东财人气排名{eastmoney_hot_rank if eastmoney_hot_rank else '暂无'}")
+    if ranking_available:
+        parts.append(f"板块内排名第{board_inner_rank_number}" + (f"/{board_inner_rank_total}" if board_inner_rank_total else ""))
     else:
-        parts.append(f"市值{cap_yi:.0f}亿，偏{'大' if cap_yi > 800 else '小'}")
-    parts.append(f"量价{'配合' if vol_price_harmony else '背离'}")
+        parts.append("板块内排名数据不足，暂不标龙一/龙二")
+    parts.append(f"资金承接{capital_score}")
+    parts.append(f"退出风险{exit_risk_score}")
     leadership_desc = "，".join(parts)
 
     return {
         "leadership_score": score,
         "leadership_level": leadership_level,
+        "leader_label": leader_label,
+        "position_score": score,
+        "board_inner_rank": board_inner_rank_number,
+        "board_inner_rank_total": board_inner_rank_total,
+        "ranking_available": ranking_available,
+        "ranking_status": "available" if ranking_available else "板块内排名数据不足",
+        "rank_hint": heat["rank_hint"],
+        "sector_rank": heat["sector_rank"],
+        "sector_rank_total": heat["sector_rank_total"],
+        "eastmoney_hot_rank": eastmoney_hot_rank,
+        "sector_name": heat["sector_name"],
+        "industry": heat["industry"],
+        "sector_heat_score": sector_heat_score,
+        "external_heat_score": external_heat_score,
+        "capital_slope_score": capital_slope_score,
+        "capital_acceptance_score": capital_score,
+        "heat_acceleration_score": heat_acceleration_score,
+        "exit_risk_score": exit_risk_score,
         "first_mover": first_mover,
         "name_recognition": name_recognition,
         "market_cap_fit": market_cap_fit,
@@ -801,41 +1342,165 @@ def analyze_leadership(df: pd.DataFrame, stock_info: dict) -> dict:
 
 def analyze_flow(df: pd.DataFrame, stock_info: dict) -> dict:
     """
-    综合流量分析：整合流量信号、时机判断、龙头潜力
+    retail_attention_v2：按视频框架整合散户注意力、题材转化、资金承接与龙头位置。
     """
     flow_signals = analyze_flow_signals(df, stock_info)
     timing = analyze_timing(df, flow_signals)
     leadership = analyze_leadership(df, stock_info)
+    heat = _normalize_heat_context(stock_info)
+    sector = {
+        "name": heat["sector_name"],
+        "type": heat["sector_type"],
+        "industry": heat["industry"],
+        "heat_score": heat["sector_heat_score"],
+        "heat": heat["sector_heat_score"],
+        "window": heat["sector_heat_window"],
+        "date": heat["sector_heat_date"],
+        "source": heat["sector_source"],
+        "confidence": heat["sector_confidence"],
+        "external_heat_score": heat["external_heat_score"],
+        "capital_slope_score": heat["capital_slope_score"],
+        "heat_acceleration_score": heat["heat_acceleration_score"],
+        "exit_risk_score": heat["exit_risk_score"],
+        "rank": heat["sector_rank"],
+        "rank_total": heat["sector_rank_total"],
+        "rank_hint": heat["rank_hint"],
+    }
 
-    # 综合分 = 流量信号40% + 时机30% + 龙头30%
-    flow_total_score = round(
-        flow_signals["flow_score"] * 0.4
-        + timing["phase_score"] * 0.3
-        + leadership["leadership_score"] * 0.3
-    )
-    flow_total_score = max(0, min(100, flow_total_score))
-
-    if flow_total_score >= 75:
-        flow_recommendation = "重点关注"
-    elif flow_total_score >= 55:
-        flow_recommendation = "可参与"
-    elif flow_total_score >= 35:
-        flow_recommendation = "观望"
+    flow_total_score = _clamp_score(flow_signals["takeover_potential_score"])
+    phase = timing["phase"]
+    exit_risk_score = flow_signals["exit_risk_score"]
+    if phase == "退潮":
+        flow_recommendation = "退潮回避"
+    elif phase == "分歧":
+        flow_recommendation = "高热分歧"
+    elif phase == "高潮" or exit_risk_score >= 78:
+        flow_recommendation = "高潮风险"
+    elif phase == "扩散":
+        flow_recommendation = "扩散中"
     else:
-        flow_recommendation = "回避"
+        flow_recommendation = "低位升温"
 
-    # 分析文字
+    retail_attention = {
+        "score": flow_signals["retail_attention_score"],
+        "direction": timing["attention_direction"],
+        "eastmoney_hot_rank": flow_signals.get("eastmoney_hot_rank"),
+        "eastmoney_rank_change": flow_signals.get("eastmoney_rank_change"),
+        "keyword_hits": flow_signals.get("keyword_hits", []),
+        "snowball_hits": flow_signals.get("snowball_hits", []),
+        "guba_status": flow_signals.get("eastmoney_guba_status"),
+        "xueqiu_status": flow_signals.get("xueqiu_status"),
+        "douyin_status": flow_signals.get("douyin_status"),
+        "available_sources": flow_signals.get("available_sources", []),
+        "calculation_sources": flow_signals.get("calculation_sources", []),
+        "source_labels": flow_signals.get("source_labels", []),
+        "links": _discussion_links(stock_info),
+    }
+    topic_conversion = {
+        "score": flow_signals["topic_conversion_score"],
+        "level": flow_signals.get("topic_conversion_level"),
+        "reasons": flow_signals.get("topic_conversion_reasons", []),
+    }
+    capital_acceptance = {
+        "score": flow_signals["capital_acceptance_score"],
+        "slope_score": flow_signals["capital_slope_proxy_score"],
+        "source": flow_signals["capital_proxy_source"],
+        "amount_proxy_ratio": flow_signals.get("amount_proxy_ratio"),
+        "volume_burst": flow_signals.get("volume_burst"),
+        "note": "资金承接用于判断新增接盘资金是否继续进入，不等同于散户讨论流量",
+    }
+    heat_trend = {
+        "score": flow_signals["heat_trend_score"],
+        "direction": timing["attention_direction"],
+        "proxy_score": flow_signals.get("heat_acceleration_proxy_score"),
+        "confidence": heat["sector_confidence"],
+        "source": "东财排名变化/关键词/板块排行/成交代理",
+        "start_score": flow_signals.get("heat_trend_profile", {}).get("start_score"),
+        "current_score": flow_signals.get("heat_trend_profile", {}).get("current_score"),
+        "change_score": flow_signals.get("heat_trend_profile", {}).get("change_score"),
+        "points": flow_signals.get("heat_trend_profile", {}).get("points", []),
+        "window": flow_signals.get("heat_trend_profile", {}).get("window", "5d"),
+        "basis": flow_signals.get("heat_trend_profile", {}).get("basis", "代理热度"),
+        "summary": flow_signals.get("heat_trend_profile", {}).get("summary"),
+        "is_proxy": flow_signals.get("heat_trend_profile", {}).get("is_proxy", True),
+    }
+    leader_position = {
+        "score": leadership["leadership_score"],
+        "leader_label": leadership["leader_label"],
+        "level": leadership["leadership_level"],
+        "ranking_status": leadership["ranking_status"],
+        "board_inner_rank": leadership.get("board_inner_rank"),
+        "board_inner_rank_total": leadership.get("board_inner_rank_total"),
+        "rank_hint": leadership["rank_hint"],
+        "desc": leadership["leadership_desc"],
+    }
+    cycle_stage = {
+        "phase": phase,
+        "score": timing["phase_score"],
+        "desc": timing["phase_desc"],
+        "attention_direction": timing["attention_direction"],
+    }
+    risk_warning = {
+        "label": flow_recommendation,
+        "score": exit_risk_score,
+        "desc": timing["exit_signal"],
+    }
+    data_status = {
+        "status": (heat.get("data_status") or {}).get("status", "partial"),
+        "source": heat["sector_source"],
+        "confidence": heat["sector_confidence"],
+        "warnings": flow_signals.get("data_warnings", []),
+        "douyin_status": "unavailable",
+        "guba_status": retail_attention["guba_status"],
+        "xueqiu_status": retail_attention["xueqiu_status"],
+        "available_sources": retail_attention["available_sources"],
+        "calculation_sources": retail_attention["calculation_sources"],
+    }
+
     flow_analysis_text = (
-        f"流量信号：{flow_signals['flow_desc']}\n"
-        f"时机判断：{timing['phase_desc']}；{timing['hold_advice']}\n"
-        f"龙头评估：{leadership['leadership_desc']}\n"
-        f"退出信号：{timing['exit_signal']}"
+        f"散户讨论热度：{retail_attention['score']}（{retail_attention['direction']}）\n"
+        f"题材转化率：{topic_conversion['score']}（{topic_conversion['level']}）\n"
+        f"资金承接：{capital_acceptance['score']}（{capital_acceptance['source']}）\n"
+        f"周期阶段：{phase}；{timing['phase_desc']}\n"
+        f"龙头位置：{leader_position['leader_label']}；{leader_position['desc']}\n"
+        f"风险提示：{flow_recommendation}；{timing['exit_signal']}"
     )
 
     return {
+        "flow_model": {
+            "version": "retail_attention_v2",
+            "formula": "接盘资金潜力 = 散户讨论流量 × 题材转化率 × 资金承接能力",
+            "note": "量价指标仅作为资金承接/退潮风险辅助证据",
+        },
+        "retail_attention": retail_attention,
+        "topic_conversion": topic_conversion,
+        "capital_acceptance": capital_acceptance,
+        "heat_trend": heat_trend,
+        "leader_position": leader_position,
+        "cycle_stage": cycle_stage,
+        "risk_warning": risk_warning,
+        "data_status": data_status,
         "flow_signals": flow_signals,
         "timing": timing,
         "leadership": leadership,
+        "sector": sector,
+        "sector_name": sector["name"],
+        "sector_type": sector["type"],
+        "sector_heat": sector["heat_score"],
+        "sector_heat_score": sector["heat_score"],
+        "sector_heat_window": sector["window"],
+        "sector_heat_date": sector["date"],
+        "sector_source": sector["source"],
+        "sector_confidence": sector["confidence"],
+        "external_heat": sector["external_heat_score"],
+        "external_heat_score": sector["external_heat_score"],
+        "capital_slope": sector["capital_slope_score"],
+        "capital_slope_score": sector["capital_slope_score"],
+        "heat_acceleration": sector["heat_acceleration_score"],
+        "heat_acceleration_score": sector["heat_acceleration_score"],
+        "exit_risk": sector["exit_risk_score"],
+        "exit_risk_score": sector["exit_risk_score"],
+        "industry": heat["industry"],
         "flow_total_score": flow_total_score,
         "flow_recommendation": flow_recommendation,
         "flow_analysis_text": flow_analysis_text,
@@ -850,6 +1515,8 @@ STRATEGY_EXIT_DEFINITIONS = {
     "leader_chase": "龙头追击",
     "trend_break": "趋势破位",
     "rotation_quality": "轮动/趋势质量",
+    "etf_rotation": "ETF动量轮动",
+    "qlib_model": "Qlib模型研究参考",
 }
 
 ALLOWED_EXIT_ACTION_TYPES = {"stop_loss", "take_profit", "sell", "reduce", "hold", "watch"}
@@ -932,6 +1599,167 @@ def _make_exit_signal(source: str, priority: str, title: str, detail: str,
     }
 
 
+def _make_risk_control(key: str, title: str, trigger_condition: str,
+                       current_status: str, is_triggered: bool = False,
+                       data_available: bool = True, offset_by_strength: bool = False,
+                       action_type: str = "watch") -> dict:
+    if offset_by_strength:
+        status_label = "强势抵消"
+    elif not data_available:
+        status_label = "数据不足"
+    else:
+        status_label = "已触发" if is_triggered else "未触发"
+    return {
+        "key": key,
+        "title": title,
+        "trigger_condition": trigger_condition,
+        "current_status": current_status,
+        "is_triggered": bool(is_triggered),
+        "status_label": status_label,
+        "action_type": action_type if action_type in ALLOWED_EXIT_ACTION_TYPES else "watch",
+    }
+
+
+def _round_exit_price(value) -> Optional[float]:
+    number = _to_float(value)
+    return round(number, 3) if number is not None else None
+
+
+def _find_risk_control(risk_controls: dict, strategy_key: str, control_key: str) -> Optional[dict]:
+    for control in risk_controls.get(strategy_key, []):
+        if control.get("key") == control_key:
+            return control
+    return None
+
+
+def _make_exit_price(primary_price=None, price_label: str = "暂无可计算卖点价",
+                     trigger_condition: str = "", current_status: str = "",
+                     is_triggered: bool = False, detail: str = "",
+                     source: str = "strategy_exit") -> dict:
+    return {
+        "primary_price": _round_exit_price(primary_price),
+        "price_label": price_label,
+        "trigger_condition": trigger_condition,
+        "current_status": current_status,
+        "is_triggered": bool(is_triggered),
+        "detail": detail,
+        "source": source,
+    }
+
+
+def _exit_price_from_control(control: Optional[dict], primary_price,
+                             price_label: str, detail: str,
+                             source: str = "strategy_exit") -> dict:
+    if not control:
+        return _make_exit_price(
+            primary_price=None,
+            price_label=price_label,
+            current_status="数据不足，暂无可计算卖点价。",
+            detail=detail,
+            source=source,
+        )
+    return _make_exit_price(
+        primary_price=primary_price,
+        price_label=price_label,
+        trigger_condition=control.get("trigger_condition", ""),
+        current_status=control.get("current_status", ""),
+        is_triggered=control.get("is_triggered", False),
+        detail=detail or control.get("current_status", ""),
+        source=source,
+    )
+
+
+def _build_dropdown_exit_prices(current_price: float, cost_price: Optional[float],
+                                pre_close: Optional[float], open_price: Optional[float],
+                                ma5: Optional[float], intraday_high: Optional[float],
+                                risk_controls: dict) -> dict:
+    has_cost = cost_price is not None and cost_price > 0
+    hard_stop = _find_risk_control(risk_controls, "position_risk", "hard_stop_loss")
+    day_drop = _find_risk_control(risk_controls, "first_board_relay", "day_drop_2pct")
+    open_break = _find_risk_control(risk_controls, "first_board_relay", "open_break_4pct")
+    low_open = _find_risk_control(risk_controls, "leader_chase", "low_open_weak")
+    pullback = _find_risk_control(risk_controls, "leader_chase", "intraday_pullback_5pct")
+    ma5_break = _find_risk_control(risk_controls, "trend_break", "ma5_break")
+    flow_divergence = _find_risk_control(risk_controls, "rotation_quality", "flow_divergence")
+
+    first_board_price = (
+        _exit_price_from_control(
+            day_drop,
+            pre_close * 0.98 if pre_close else None,
+            "当日跌幅卖点",
+            "首板接力优先看当日跌幅是否破坏接力承接。",
+        )
+        if pre_close
+        else _exit_price_from_control(
+            open_break,
+            open_price * 0.96 if open_price else None,
+            "跌破开盘价卖点",
+            "昨收价不可用时，用跌破开盘价规则作为接力卖点参考。",
+        )
+    )
+
+    leader_price = (
+        _exit_price_from_control(
+            low_open,
+            open_price * 1.01 if open_price else None,
+            "低开承接风控价",
+            "龙头追击优先看低开后能否快速修复开盘弱势。",
+        )
+        if open_price and pre_close
+        else _exit_price_from_control(
+            pullback,
+            intraday_high * 0.95 if intraday_high else None,
+            "冲高回落风控价",
+            "低开承接数据不足时，用盘中高点回撤规则作为龙头追击参考。",
+        )
+    )
+
+    position_price = _exit_price_from_control(
+        hard_stop,
+        float(cost_price) * 0.93 if has_cost else None,
+        "硬止损线",
+        "通用持仓风控，以成本价回撤7%作为硬止损参考。",
+    )
+
+    exit_prices = {
+        "position_risk": position_price,
+        "first_board_relay": first_board_price,
+        "leader_chase": leader_price,
+        "trend_break": _exit_price_from_control(
+            ma5_break,
+            ma5 * 0.97 if ma5 else None,
+            "MA5防线卖点",
+            "短线趋势防线失守时，用 MA5 下方3%作为趋势破位参考。",
+        ),
+        "rotation_quality": _exit_price_from_control(
+            flow_divergence,
+            current_price if flow_divergence and flow_divergence.get("is_triggered") else None,
+            "轮动质量风控价",
+            "流量分歧或退潮是质量信号，价格仅作当前观察参考。",
+        ),
+        "etf_rotation": _make_exit_price(
+            primary_price=None,
+            price_label="不适用于个股卖点",
+            trigger_condition="ETF动量轮动不套用个股持仓卖点",
+            current_status="该策略不适用于个股卖点。",
+            detail="ETF动量轮动不适用于个股卖点，仅用于ETF推荐观察，不对单只个股生成卖点价。",
+            source="not_applicable",
+        ),
+    }
+
+    qlib_price = _make_exit_price(
+        primary_price=float(cost_price) * 0.93 if has_cost else None,
+        price_label="通用持仓风控价",
+        trigger_condition=hard_stop.get("trigger_condition", "现价 <= 成本价 * 0.93 时触发止损卖出") if hard_stop else "现价 <= 成本价 * 0.93 时触发止损卖出",
+        current_status=hard_stop.get("current_status", "") if hard_stop else "未填写持仓成本，无法给出通用风控价。",
+        is_triggered=hard_stop.get("is_triggered", False) if hard_stop else False,
+        detail="Qlib模型组仅作量化研究与观察参考；这里复用通用持仓硬止损价，不代表 Qlib 自动卖出信号。",
+        source="mapped_position_risk",
+    )
+    exit_prices["qlib_model"] = qlib_price
+    return exit_prices
+
+
 def _minute_high(minute_df: Optional[pd.DataFrame]):
     if minute_df is None or minute_df.empty:
         return None
@@ -962,10 +1790,12 @@ def _decision_from_signals(signals: list) -> str:
 
 
 def _build_strategy_result(key: str, signals: list,
+                           risk_controls: Optional[list] = None,
                            summary: Optional[str] = None,
                            decision: Optional[str] = None,
                            risk_level: Optional[str] = None,
-                           risk_score: Optional[int] = None) -> dict:
+                           risk_score: Optional[int] = None,
+                           exit_price: Optional[dict] = None) -> dict:
     active_risk_signals = [
         signal for signal in signals
         if signal.get("executable", True) and signal.get("priority") in {"high", "medium"}
@@ -988,6 +1818,10 @@ def _build_strategy_result(key: str, signals: list,
         if signals:
             title_text = "、".join(signal["title"] for signal in signals[:2])
             summary = f"触发{STRATEGY_EXIT_DEFINITIONS[key]}信号：{title_text}。"
+        elif key == "etf_rotation":
+            summary = "ETF动量轮动不适用于个股卖点。"
+        elif key == "qlib_model":
+            summary = "Qlib模型组仅作量化研究参考，卖点价复用通用持仓风控。"
         else:
             summary = f"未触发{STRATEGY_EXIT_DEFINITIONS[key]}卖点。"
 
@@ -1000,13 +1834,19 @@ def _build_strategy_result(key: str, signals: list,
         "decision_label": EXIT_DECISION_LABELS.get(decision, "观察"),
         "summary": summary,
         "signals": signals,
+        "risk_controls": risk_controls or [],
+        "exit_price": exit_price or _make_exit_price(),
     }
 
 
-def _build_strategy_results(signals: list, cost_price: Optional[float]) -> dict:
+def _build_strategy_results(signals: list, cost_price: Optional[float],
+                            risk_controls: Optional[dict] = None,
+                            exit_prices: Optional[dict] = None) -> dict:
     grouped = {key: [] for key in STRATEGY_EXIT_DEFINITIONS}
     for signal in signals:
         grouped.setdefault(signal["strategy_key"], []).append(signal)
+    risk_controls = risk_controls or {}
+    exit_prices = exit_prices or {}
 
     strategies = {}
     for key in STRATEGY_EXIT_DEFINITIONS:
@@ -1020,14 +1860,20 @@ def _build_strategy_results(signals: list, cost_price: Optional[float]) -> dict:
             decision = "watch"
             risk_level = "low"
             risk_score = 0
+        elif key in {"etf_rotation", "qlib_model"}:
+            decision = "watch"
+            risk_level = "low"
+            risk_score = 0
 
         strategies[key] = _build_strategy_result(
             key,
             grouped.get(key, []),
+            risk_controls=risk_controls.get(key, []),
             summary=summary,
             decision=decision,
             risk_level=risk_level,
             risk_score=risk_score,
+            exit_price=exit_prices.get(key),
         )
     return strategies
 
@@ -1168,6 +2014,7 @@ def analyze_strategy_exit(
     normalized_buy_date, latest_trade_date, trade_dates = _validate_buy_date(df, buy_date)
 
     signals = []
+    risk_controls = {key: [] for key in STRATEGY_EXIT_DEFINITIONS}
     missing_context = []
     has_cost = cost_price is not None and cost_price > 0
     position = {
@@ -1194,6 +2041,49 @@ def analyze_strategy_exit(
         ))
 
     if has_cost:
+        hard_stop_triggered = current_price <= float(cost_price) * 0.93
+        soft_stop_triggered = (not hard_stop_triggered) and current_price <= float(cost_price) * 0.95
+        risk_controls["position_risk"].extend([
+            _make_risk_control(
+                "hard_stop_loss",
+                "硬止损线",
+                "现价 <= 成本价 * 0.93 时触发止损卖出",
+                f"当前现价 {current_price:.2f}，成本 {cost_price:.2f}，收益 {position['profit_pct']:.2f}%，"
+                f"{'已触发硬止损' if hard_stop_triggered else '未触发硬止损'}。",
+                hard_stop_triggered,
+                action_type="stop_loss",
+            ),
+            _make_risk_control(
+                "soft_stop_reduce",
+                "亏损减仓线",
+                "现价 <= 成本价 * 0.95 且尚未触发硬止损时，触发减仓风控",
+                f"当前现价 {current_price:.2f}，成本 {cost_price:.2f}，收益 {position['profit_pct']:.2f}%，"
+                f"{'已触发亏损减仓' if soft_stop_triggered else '未触发亏损减仓'}。",
+                soft_stop_triggered,
+                action_type="reduce",
+            ),
+        ])
+    else:
+        risk_controls["position_risk"].extend([
+            _make_risk_control(
+                "hard_stop_loss",
+                "硬止损线",
+                "现价 <= 成本价 * 0.93 时触发止损卖出",
+                "未填写持仓成本，无法判断硬止损是否触发。",
+                data_available=False,
+                action_type="stop_loss",
+            ),
+            _make_risk_control(
+                "soft_stop_reduce",
+                "亏损减仓线",
+                "现价 <= 成本价 * 0.95 且尚未触发硬止损时，触发减仓风控",
+                "未填写持仓成本，无法判断亏损减仓是否触发。",
+                data_available=False,
+                action_type="reduce",
+            ),
+        ])
+
+    if has_cost:
         if current_price <= float(cost_price) * 0.93:
             signals.append(_make_exit_signal(
                 "持仓风控",
@@ -1215,6 +2105,15 @@ def analyze_strategy_exit(
 
     if pre_close and pre_close > 0:
         day_change = (current_price / pre_close - 1) * 100
+        day_drop_triggered = day_change < -2
+        risk_controls["first_board_relay"].append(_make_risk_control(
+            "day_drop_2pct",
+            "当日跌幅卖点",
+            "当日跌幅 < -2% 时，接力承接转弱，触发卖出风控",
+            f"当前当日涨跌幅 {day_change:.2f}%，{'已触发' if day_drop_triggered else '未触发'}当日跌幅卖点。",
+            day_drop_triggered,
+            action_type="sell",
+        ))
         if day_change < -2:
             signals.append(_make_exit_signal(
                 "首板接力",
@@ -1225,9 +2124,42 @@ def analyze_strategy_exit(
                 action_type="sell",
             ))
     else:
+        risk_controls["first_board_relay"].append(_make_risk_control(
+            "day_drop_2pct",
+            "当日跌幅卖点",
+            "当日跌幅 < -2% 时，接力承接转弱，触发卖出风控",
+            "昨收价不可用，无法判断当日跌幅卖点是否触发。",
+            data_available=False,
+            action_type="sell",
+        ))
         missing_context.append("昨收价不可用，无法判断当日跌幅卖点。")
 
     if open_price and open_price > 0:
+        open_break_triggered = current_price < open_price * 0.96
+        low_open_weak_triggered = bool(pre_close and open_price < pre_close and current_price <= open_price * 1.01)
+        risk_controls["first_board_relay"].append(_make_risk_control(
+            "open_break_4pct",
+            "跌破开盘价",
+            "现价 < 开盘价 * 0.96 时，日内走势转弱，触发卖出风控",
+            f"当前现价 {current_price:.2f}，开盘价 {open_price:.2f}，"
+            f"{'已触发跌破开盘价' if open_break_triggered else '未触发跌破开盘价'}。",
+            open_break_triggered,
+            action_type="sell",
+        ))
+        risk_controls["leader_chase"].append(_make_risk_control(
+            "low_open_weak",
+            "低开承接",
+            "开盘价 < 昨收，且现价 <= 开盘价 * 1.01 时，触发减仓观察",
+            (
+                f"当前开盘价 {open_price:.2f}，昨收 {pre_close:.2f}，现价 {current_price:.2f}，"
+                f"{'已触发低开承接偏弱' if low_open_weak_triggered else '未触发低开承接偏弱'}。"
+                if pre_close else
+                "昨收价不可用，无法判断低开承接是否触发。"
+            ),
+            low_open_weak_triggered,
+            data_available=bool(pre_close),
+            action_type="reduce",
+        ))
         if current_price < open_price * 0.96:
             signals.append(_make_exit_signal(
                 "首板接力",
@@ -1247,8 +2179,39 @@ def analyze_strategy_exit(
                 action_type="reduce",
             ))
     else:
+        risk_controls["first_board_relay"].append(_make_risk_control(
+            "open_break_4pct",
+            "跌破开盘价",
+            "现价 < 开盘价 * 0.96 时，日内走势转弱，触发卖出风控",
+            "开盘价不可用，无法判断跌破开盘价卖点是否触发。",
+            data_available=False,
+            action_type="sell",
+        ))
+        risk_controls["leader_chase"].append(_make_risk_control(
+            "low_open_weak",
+            "低开承接",
+            "开盘价 < 昨收，且现价 <= 开盘价 * 1.01 时，触发减仓观察",
+            "开盘价不可用，无法判断低开承接是否触发。",
+            data_available=False,
+            action_type="reduce",
+        ))
         missing_context.append("开盘价不可用，无法判断跌破开盘价与低开承接规则。")
 
+    trend_break_triggered = bool(ma5 and current_price < ma5 * 0.97)
+    risk_controls["trend_break"].append(_make_risk_control(
+        "ma5_break",
+        "MA5防线",
+        "现价 < MA5 * 0.97 时，短线趋势防线失守，触发卖出风控",
+        (
+            f"当前现价 {current_price:.2f}，MA5 {ma5:.2f}，"
+            f"{'已触发跌破MA5防线' if trend_break_triggered else '未触发跌破MA5防线'}。"
+            if ma5 else
+            "MA5数据不足，无法判断趋势破位是否触发。"
+        ),
+        trend_break_triggered,
+        data_available=bool(ma5),
+        action_type="sell",
+    ))
     if ma5 and current_price < ma5 * 0.97:
         signals.append(_make_exit_signal(
             "趋势破位",
@@ -1263,6 +2226,17 @@ def analyze_strategy_exit(
     minute_status = "available" if intraday_high else "missing"
     if intraday_high and intraday_high > 0:
         pullback = (intraday_high - current_price) / intraday_high * 100
+        pullback_triggered = pullback >= 5
+        risk_controls["leader_chase"].append(_make_risk_control(
+            "intraday_pullback_5pct",
+            "冲高回落",
+            "盘中高点回撤 >= 5% 时，触发龙头追击卖出/减仓风控",
+            f"当前盘中高点 {intraday_high:.2f}，现价 {current_price:.2f}，回撤 {pullback:.2f}%，"
+            f"{'接近涨停强势抵消' if pullback_triggered and near_limit_up else ('已触发冲高回落' if pullback_triggered else '未触发冲高回落')}。",
+            pullback_triggered,
+            offset_by_strength=pullback_triggered and near_limit_up,
+            action_type="sell" if not near_limit_up else "reduce",
+        ))
         if pullback >= 5:
             signals.append(_make_exit_signal(
                 "龙头追击",
@@ -1277,6 +2251,16 @@ def analyze_strategy_exit(
             max_profit = (intraday_high / float(cost_price) - 1) * 100
             current_profit = (current_price / float(cost_price) - 1) * 100
             giveback = max_profit - current_profit
+            giveback_triggered = giveback >= 10 or (max_profit >= 30 and current_profit < 10)
+            risk_controls["position_risk"].append(_make_risk_control(
+                "profit_giveback",
+                "利润回吐保护",
+                "盘中最高收益 >= 15%，且收益回吐 >= 10个百分点，或最高收益 >= 30% 后当前收益 < 10% 时触发止盈",
+                f"当前盘中最高收益约 {max_profit:.2f}%，当前收益约 {current_profit:.2f}%，回吐 {giveback:.2f} 个百分点，"
+                f"{'已触发利润回吐保护' if giveback_triggered else '未触发利润回吐保护'}。",
+                giveback_triggered,
+                action_type="take_profit",
+            ))
             if giveback >= 10 or (max_profit >= 30 and current_profit < 10):
                 signals.append(_make_exit_signal(
                     "持仓风控",
@@ -1287,7 +2271,41 @@ def analyze_strategy_exit(
                     strategy_key="position_risk",
                     action_type="take_profit",
                 ))
+        elif has_cost:
+            risk_controls["position_risk"].append(_make_risk_control(
+                "profit_giveback",
+                "利润回吐保护",
+                "盘中最高收益 >= 15%，且收益回吐 >= 10个百分点，或最高收益 >= 30% 后当前收益 < 10% 时触发止盈",
+                f"当前盘中最高价 {intraday_high:.2f} 尚未达到成本 {cost_price:.2f} 的115%，未触发利润回吐保护。",
+                False,
+                action_type="take_profit",
+            ))
+        else:
+            risk_controls["position_risk"].append(_make_risk_control(
+                "profit_giveback",
+                "利润回吐保护",
+                "盘中最高收益 >= 15%，且收益回吐 >= 10个百分点，或最高收益 >= 30% 后当前收益 < 10% 时触发止盈",
+                "未填写持仓成本，无法判断利润回吐保护是否触发。",
+                data_available=False,
+                action_type="take_profit",
+            ))
     else:
+        risk_controls["leader_chase"].append(_make_risk_control(
+            "intraday_pullback_5pct",
+            "冲高回落",
+            "盘中高点回撤 >= 5% 时，触发龙头追击卖出/减仓风控",
+            "分钟数据不可用，无法判断冲高回落是否触发。",
+            data_available=False,
+            action_type="sell",
+        ))
+        risk_controls["position_risk"].append(_make_risk_control(
+            "profit_giveback",
+            "利润回吐保护",
+            "盘中最高收益 >= 15%，且收益回吐 >= 10个百分点，或最高收益 >= 30% 后当前收益 < 10% 时触发止盈",
+            "分钟数据不可用，无法判断盘中利润回吐是否触发。",
+            data_available=False,
+            action_type="take_profit",
+        ))
         msg = "分钟数据不可用，无法判断冲高回落和盘中利润回吐。"
         if minute_error:
             msg += f" 数据源提示：{minute_error}"
@@ -1297,6 +2315,21 @@ def analyze_strategy_exit(
     leadership = flow_result.get("leadership") or flow_result.get("flow_leadership") or {}
     flow_signals = flow_result.get("flow_signals") or {}
     phase = timing.get("phase")
+    phase_triggered = phase in ["分歧", "退潮"] and not near_limit_up
+    risk_controls["rotation_quality"].append(_make_risk_control(
+        "flow_divergence",
+        "流量分歧退潮",
+        "流量阶段为分歧/退潮且未接近涨停时，触发减仓或卖出风控",
+        (
+            f"当前流量阶段 {phase}，{'接近涨停强势抵消' if phase in ['分歧', '退潮'] and near_limit_up else ('已触发流量分歧退潮' if phase_triggered else '未触发流量分歧退潮')}。"
+            if phase else
+            "流量阶段数据不足，无法判断分歧退潮是否触发。"
+        ),
+        phase_triggered,
+        data_available=bool(phase),
+        offset_by_strength=phase in ["分歧", "退潮"] and near_limit_up,
+        action_type="sell" if phase == "退潮" else "reduce",
+    ))
     if phase in ["分歧", "退潮"] and not near_limit_up:
         signals.append(_make_exit_signal(
             "轮动/趋势质量",
@@ -1306,6 +2339,23 @@ def analyze_strategy_exit(
             strategy_key="rotation_quality",
             action_type="sell" if phase == "退潮" else "reduce",
         ))
+    harmony_available = "vol_price_harmony" in leadership
+    harmony_triggered = leadership.get("vol_price_harmony") is False and not near_limit_up
+    risk_controls["rotation_quality"].append(_make_risk_control(
+        "vol_price_divergence",
+        "量价背离",
+        "量价配合度为弱且未接近涨停时，触发减仓风控",
+        (
+            f"当前量价配合度{'不足' if leadership.get('vol_price_harmony') is False else '未见明显背离'}，"
+            f"{'接近涨停强势抵消' if leadership.get('vol_price_harmony') is False and near_limit_up else ('已触发量价背离' if harmony_triggered else '未触发量价背离')}。"
+            if harmony_available else
+            "量价配合数据不足，无法判断量价背离是否触发。"
+        ),
+        harmony_triggered,
+        data_available=harmony_available,
+        offset_by_strength=leadership.get("vol_price_harmony") is False and near_limit_up,
+        action_type="reduce",
+    ))
     if leadership.get("vol_price_harmony") is False and not near_limit_up:
         signals.append(_make_exit_signal(
             "轮动/趋势质量",
@@ -1315,6 +2365,22 @@ def analyze_strategy_exit(
             strategy_key="rotation_quality",
             action_type="reduce",
         ))
+    flow_phase = flow_signals.get("flow_phase")
+    flow_shrink_triggered = flow_phase == "萎缩" and not near_limit_up
+    risk_controls["rotation_quality"].append(_make_risk_control(
+        "volume_shrink",
+        "量能萎缩",
+        "成交量进入萎缩阶段且未接近涨停时，触发观察风控",
+        (
+            f"当前量能阶段 {flow_phase}，{'接近涨停强势抵消' if flow_phase == '萎缩' and near_limit_up else ('已触发量能萎缩' if flow_shrink_triggered else '未触发量能萎缩')}。"
+            if flow_phase else
+            "量能阶段数据不足，无法判断量能萎缩是否触发。"
+        ),
+        flow_shrink_triggered,
+        data_available=bool(flow_phase),
+        offset_by_strength=flow_phase == "萎缩" and near_limit_up,
+        action_type="watch",
+    ))
     if flow_signals.get("flow_phase") == "萎缩" and not near_limit_up:
         signals.append(_make_exit_signal(
             "轮动/趋势质量",
@@ -1366,7 +2432,16 @@ def analyze_strategy_exit(
     if trade_eligibility["guidance_scope"] == "next_trading_day" and risk_level != "low":
         summary = f"{summary} 今日不可卖出，以上卖点作为下一交易日风控指导。"
 
-    strategies = _build_strategy_results(signals, cost_price)
+    exit_prices = _build_dropdown_exit_prices(
+        current_price,
+        cost_price,
+        pre_close,
+        open_price,
+        ma5,
+        intraday_high,
+        risk_controls,
+    )
+    strategies = _build_strategy_results(signals, cost_price, risk_controls, exit_prices)
 
     return {
         "risk_level": risk_level,
@@ -1865,11 +2940,38 @@ def analyze_stock(
 
     # ── 流量定价模型分析 ──
     flow_result = flow_result or analyze_flow(df, stock_info)
+    heat_context = _normalize_heat_context(stock_info)
+    sector = flow_result.get("sector") or {
+        "name": heat_context["sector_name"],
+        "industry": heat_context["industry"],
+        "heat_score": heat_context["sector_heat_score"],
+        "external_heat_score": heat_context["external_heat_score"],
+        "capital_slope_score": heat_context["capital_slope_score"],
+        "heat_acceleration_score": heat_context["heat_acceleration_score"],
+        "exit_risk_score": heat_context["exit_risk_score"],
+        "rank": heat_context["sector_rank"],
+        "rank_total": heat_context["sector_rank_total"],
+        "rank_hint": heat_context["rank_hint"],
+    }
+    industry = heat_context["industry"]
 
-    # ── 综合建议：取技术面和流量分析中更保守的那个 ──
+    # ── 综合建议：技术面为基础，题材流量只做风险降级，不再输出参与性建议 ──
     flow_rec = flow_result.get("flow_recommendation", "观望")
 
-    conservative_map = {"强烈买入": 5, "买入": 4, "重点关注": 4, "可参与": 3, "观望": 3, "卖出": 2, "回避": 1, "强烈卖出": 1}
+    conservative_map = {
+        "强烈买入": 5,
+        "买入": 4,
+        "低位升温": 3,
+        "扩散中": 3,
+        "分歧观察": 2,
+        "高热分歧": 2,
+        "高潮风险": 2,
+        "退潮回避": 1,
+        "观望": 3,
+        "卖出": 2,
+        "回避": 1,
+        "强烈卖出": 1,
+    }
     reverse_map = {5: "强烈买入", 4: "买入", 3: "观望", 2: "卖出", 1: "强烈卖出"}
 
     tech_val = conservative_map.get(tech_rec, 3)
@@ -1908,7 +3010,7 @@ def analyze_stock(
     )
 
     if tech_rec != base_recommendation:
-        conflict_note = f"\n⚠️ 注意：技术面建议「{tech_rec}」，但流量分析建议「{flow_rec}」，综合取更谨慎的「{base_recommendation}」"
+        conflict_note = f"\n⚠️ 注意：技术面参考为「{tech_rec}」，题材流量状态为「{flow_rec}」，综合取更谨慎的「{base_recommendation}」"
     else:
         conflict_note = ""
 
@@ -1998,17 +3100,15 @@ def analyze_stock(
     ld = flow_result["leadership"]
     vol_burst_word = "爆发" if fs["volume_burst"] >= 2.0 else "放大" if fs["volume_burst"] >= 1.5 else "正常" if fs["volume_burst"] >= 1.0 else "萎缩"
     vol_word = "极高" if fs["volatility"] > 4 else "偏高" if fs["volatility"] > 2.5 else "中等"
-    ld_parts = []
-    if ld["first_mover"]:
-        ld_parts.append("先涨")
-    if ld["name_recognition"] in ["高", "中等"]:
-        ld_parts.append("名字辨识")
-    if ld["market_cap_fit"]:
-        ld_parts.append("市值适中")
-    if ld["vol_price_harmony"]:
-        ld_parts.append("量价配合")
-    else:
-        ld_parts.append("量价背离")
+    retail_attention = flow_result.get("retail_attention", {})
+    topic_conversion = flow_result.get("topic_conversion", {})
+    capital_acceptance = flow_result.get("capital_acceptance", {})
+    heat_trend = flow_result.get("heat_trend", {})
+    leader_position = flow_result.get("leader_position", {})
+    risk_warning = flow_result.get("risk_warning", {})
+    flow_data_status = flow_result.get("data_status", {})
+    source_line = "；".join(retail_attention.get("source_labels") or []) or "外部讨论代理数据不足"
+    warnings_line = "；".join((flow_data_status.get("warnings") or [])[:2])
     summary_parts.extend([
         "",
         f"▎策略卖点提示（风险{strategy_exit['risk_score']}分）",
@@ -2023,17 +3123,24 @@ def analyze_stock(
 
     summary_parts.extend([
         "",
-        f"▎流量分析（{flow_result['flow_total_score']}分）",
-        f"  流量阶段：{tm['phase']}期",
-        f"  量能爆发度：{fs['volume_burst']}倍（成交量{vol_burst_word}）",
-        f"  价格动量：{fs['price_momentum']:+.1f}%（近5日）",
-        f"  波动率：{fs['volatility']:.1f}%（{vol_word}）",
-        f"  龙头潜力：{ld['leadership_level']}（{'+'.join(ld_parts)}）",
+        f"▎题材流量分析（接盘潜力{flow_result['flow_total_score']}分）",
+        f"  模型：retail_attention_v2（先看散户讨论与板块热度，再看资金承接和龙头位置）",
+        f"  散户流量方向：{retail_attention.get('direction', tm.get('attention_direction', '--'))}",
+        f"  周期阶段：{tm['phase']}（{tm['phase_desc']}）",
+        f"  风险提示：{risk_warning.get('label', flow_result.get('flow_recommendation', '--'))}，退出风险{risk_warning.get('score', fs.get('exit_risk_score', '--'))}",
+        f"  板块/行业：{sector.get('name', '未知')} / {industry}",
+        f"  散户讨论热度：{retail_attention.get('score', fs.get('retail_attention_score', '--'))}；数据口径：{source_line}",
+        f"  题材转化率：{topic_conversion.get('score', fs.get('topic_conversion_score', '--'))}（{topic_conversion.get('level', fs.get('topic_conversion_level', '--'))}）",
+        f"  热度趋势：{heat_trend.get('score', fs.get('heat_trend_score', '--'))}，置信度{heat_trend.get('confidence', sector.get('confidence', '--'))}",
+        f"  资金承接：{capital_acceptance.get('score', fs.get('capital_acceptance_score', '--'))}（{capital_acceptance.get('source', '成交额代理')}）",
+        f"  龙头位置：{leader_position.get('leader_label', ld.get('leader_label', '--'))}；{leader_position.get('ranking_status', ld.get('ranking_status', '--'))}",
+        f"  辅助承接证据：成交量{vol_burst_word}{fs['volume_burst']}倍，近5日涨幅{fs['price_momentum']:+.1f}%，波动率{fs['volatility']:.1f}%（{vol_word}）",
         "",
-        f"  ⚡ 流量信号：{fs['flow_desc']}",
-        f"  ⏰ 时机判断：{tm['hold_advice']}",
-        f"  🎯 龙头评估：{ld['leadership_desc']}",
-        f"  🚪 退出信号：{tm['exit_signal']}",
+        f"  流量判断：{fs['flow_desc']}",
+        f"  周期判断：{tm['hold_advice']}",
+        f"  龙头判断：{ld['leadership_desc']}",
+        f"  退出风险：{tm['exit_signal']}",
+        f"  数据限制：{warnings_line or '暂无额外限制'}",
         "",
         "⚠️ 免责声明：本分析仅供参考，不构成投资建议。"
     ])
@@ -2055,6 +3162,7 @@ def analyze_stock(
     return {
         "stock_code": stock_code,
         "stock_name": stock_name,
+        "industry": industry,
         "current_price": current_price,
         # 技术指标
         "ma5": ma5,
@@ -2113,6 +3221,33 @@ def analyze_stock(
         "flow_signals": flow_result["flow_signals"],
         "flow_timing": flow_result["timing"],
         "flow_leadership": flow_result["leadership"],
+        "flow_model": flow_result.get("flow_model"),
+        "retail_attention": flow_result.get("retail_attention"),
+        "topic_conversion": flow_result.get("topic_conversion"),
+        "capital_acceptance": flow_result.get("capital_acceptance"),
+        "heat_trend": flow_result.get("heat_trend"),
+        "leader_position": flow_result.get("leader_position"),
+        "cycle_stage": flow_result.get("cycle_stage"),
+        "risk_warning": flow_result.get("risk_warning"),
+        "data_status": flow_result.get("data_status"),
+        "flow_data_status": flow_result.get("data_status"),
+        "sector": sector,
+        "sector_name": sector.get("name"),
+        "sector_type": sector.get("type"),
+        "sector_heat": sector.get("heat_score"),
+        "sector_heat_score": sector.get("heat_score"),
+        "sector_heat_window": sector.get("window"),
+        "sector_heat_date": sector.get("date"),
+        "sector_source": sector.get("source"),
+        "sector_confidence": sector.get("confidence"),
+        "external_heat": sector.get("external_heat_score"),
+        "external_heat_score": sector.get("external_heat_score"),
+        "capital_slope": sector.get("capital_slope_score"),
+        "capital_slope_score": sector.get("capital_slope_score"),
+        "heat_acceleration": sector.get("heat_acceleration_score"),
+        "heat_acceleration_score": sector.get("heat_acceleration_score"),
+        "exit_risk": sector.get("exit_risk_score"),
+        "exit_risk_score": sector.get("exit_risk_score"),
         "flow_total_score": flow_result["flow_total_score"],
         "flow_recommendation": flow_result["flow_recommendation"],
         "flow_analysis_text": flow_result["flow_analysis_text"],

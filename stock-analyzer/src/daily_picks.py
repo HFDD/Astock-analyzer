@@ -18,9 +18,13 @@ import pandas as pd
 try:
     from models import STRATEGY_META, get_daily_picks, save_strategy_run_results
     from data_fetcher import get_stock_daily
+    from qlib_model import run_qlib_model
+    import a_stock_data_provider as a_stock_data
 except ImportError:  # pragma: no cover - package import fallback
     from .models import STRATEGY_META, get_daily_picks, save_strategy_run_results
     from .data_fetcher import get_stock_daily
+    from .qlib_model import run_qlib_model
+    from . import a_stock_data_provider as a_stock_data
 
 
 STRATEGY_KEYS = tuple(STRATEGY_META.keys())
@@ -109,8 +113,8 @@ def _history_with_amount(provider, code: str, end_date: str, days: int) -> pd.Da
     return df.sort_values("date").reset_index(drop=True) if "date" in df.columns else df.reset_index(drop=True)
 
 
-class AkshareDailyPickProvider:
-    """AKShare-backed adapter used by the runner and API."""
+class AStockDataDailyPickProvider:
+    """a-stock-data-first adapter used by the runner and API."""
 
     def __init__(self):
         self._spot_cache = None
@@ -133,6 +137,12 @@ class AkshareDailyPickProvider:
             return today
 
     def trade_dates(self) -> list[str]:
+        try:
+            dates = a_stock_data.get_trade_dates(days=260)
+            if dates:
+                return dates
+        except Exception:
+            pass
         df = self._ak().tool_trade_date_hist_sina()
         if df is None or df.empty:
             return []
@@ -161,6 +171,12 @@ class AkshareDailyPickProvider:
         return self._etf_spot_cache.copy() if self._etf_spot_cache is not None else pd.DataFrame()
 
     def limit_up_candidates(self, previous_date: str) -> list[dict]:
+        try:
+            rows = a_stock_data.get_limit_up_candidates(previous_date)
+            if rows:
+                return rows
+        except Exception:
+            pass
         date_arg = previous_date.replace("-", "")
         df = self._ak().stock_zt_pool_em(date=date_arg)
         if df is None or df.empty:
@@ -234,12 +250,15 @@ class AkshareDailyPickProvider:
 
     def market_sentiment(self, trade_date: str) -> dict:
         try:
-            df = self._ak().index_zh_a_hist(
-                symbol="000852",
-                period="daily",
-                start_date=(pd.to_datetime(trade_date) - pd.Timedelta(days=130)).strftime("%Y%m%d"),
-                end_date=trade_date.replace("-", ""),
-            )
+            try:
+                df = a_stock_data.get_index_history("000852", trade_date, 130)
+            except Exception:
+                df = self._ak().index_zh_a_hist(
+                    symbol="000852",
+                    period="daily",
+                    start_date=(pd.to_datetime(trade_date) - pd.Timedelta(days=130)).strftime("%Y%m%d"),
+                    end_date=trade_date.replace("-", ""),
+                )
             if df is None or df.empty:
                 raise ValueError("中证1000指数为空")
             close = pd.to_numeric(df["收盘"] if "收盘" in df.columns else df["close"], errors="coerce").dropna()
@@ -263,6 +282,17 @@ class AkshareDailyPickProvider:
     def etf_history(self, code: str, end_date: str, days: int) -> pd.DataFrame:
         plain = _normalize_code(code)
         first_error = None
+        try:
+            df = a_stock_data.get_etf_history(plain, end_date, days)
+            if df is not None and not df.empty:
+                for col in ["close", "volume", "amount"]:
+                    if col in df.columns:
+                        df[col] = pd.to_numeric(df[col], errors="coerce")
+                if "date" in df.columns:
+                    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+                return df.tail(days).reset_index(drop=True)
+        except Exception as exc:
+            first_error = exc
         try:
             df = self._ak().fund_etf_hist_em(
                 symbol=plain,
@@ -296,9 +326,24 @@ class AkshareDailyPickProvider:
 
     def etf_spot_map(self) -> dict:
         try:
+            quote_map = a_stock_data.get_realtime_quotes(sorted(set(GLOBAL_ETF_POOL + CHINA_ETF_POOL + [EtfRotationStrategy.defensive_etf])))
+            if quote_map:
+                return {
+                    code: {
+                        "name": item.get("name") or code,
+                        "price": _to_float(item.get("price")),
+                        "volume": _to_float(item.get("volume"), 0),
+                        "amount": _to_float(item.get("amount"), 0),
+                    }
+                    for code, item in quote_map.items()
+                }
+        except Exception as exc:
+            first_error = exc
+        try:
             df = self._etf_spot()
         except Exception as exc:
-            raise DataSourceUnavailable(f"ETF实时行情不可用: {str(exc)[:120]}") from exc
+            prefix = f"a-stock-data失败: {str(first_error)[:80]}；" if "first_error" in locals() else ""
+            raise DataSourceUnavailable(f"ETF实时行情不可用: {prefix}{str(exc)[:120]}") from exc
         if df.empty:
             raise DataSourceUnavailable("ETF实时行情为空")
         result = {}
@@ -319,12 +364,15 @@ class AkshareDailyPickProvider:
         details = {}
         for name, code in indexes.items():
             try:
-                df = self._ak().index_zh_a_hist(
-                    symbol=code,
-                    period="daily",
-                    start_date=(pd.to_datetime(trade_date) - pd.Timedelta(days=40)).strftime("%Y%m%d"),
-                    end_date=trade_date.replace("-", ""),
-                )
+                try:
+                    df = a_stock_data.get_index_history(code, trade_date, 40)
+                except Exception:
+                    df = self._ak().index_zh_a_hist(
+                        symbol=code,
+                        period="daily",
+                        start_date=(pd.to_datetime(trade_date) - pd.Timedelta(days=40)).strftime("%Y%m%d"),
+                        end_date=trade_date.replace("-", ""),
+                    )
                 close = pd.to_numeric(df["收盘"] if "收盘" in df.columns else df["close"], errors="coerce").dropna()
                 if len(close) < 10:
                     continue
@@ -340,6 +388,9 @@ class AkshareDailyPickProvider:
         if len([item for item in details.values() if item.get("warning")]) >= 4:
             warning = "A股走弱判断指数数据全部不可用"
         return {"is_weak": below >= 3, "above_count": above, "below_count": below, "details": details, "warning": warning}
+
+
+AkshareDailyPickProvider = AStockDataDailyPickProvider
 
 
 class BaseStrategy:
@@ -784,12 +835,56 @@ class EtfRotationStrategy(BaseStrategy):
         return StrategyRunResult(self.key, self.name, trade_date, "success", len(candidates), picks, None, started, datetime.now())
 
 
+class QlibModelStrategy(BaseStrategy):
+    key = "qlib_model"
+
+    def run(self, trade_date: str) -> StrategyRunResult:
+        started = datetime.now()
+        if hasattr(self.provider, "qlib_model_run"):
+            result = self.provider.qlib_model_run(trade_date, top_n=10)
+        else:
+            result = run_qlib_model(
+                mode="run",
+                trade_date=trade_date,
+                top_n=10,
+                raise_on_unavailable=False,
+            )
+        recommendations = [
+            Recommendation(
+                strategy_key=record.get("strategy_key", self.key),
+                strategy_name=record.get("strategy_name", self.name),
+                code=_normalize_code(record.get("code")),
+                name=record.get("name") or _normalize_code(record.get("code")),
+                rank=int(record.get("rank") or idx),
+                score=float(record.get("score") or 0),
+                mode=record.get("mode") or "Qlib样本外预测",
+                reasons=record.get("reasons") or [],
+                risks=record.get("risks") or ["模型输出仅作量化研究参考，不构成投资建议"],
+                metrics=record.get("metrics") or {},
+                data_status=record.get("data_status") or {},
+            )
+            for idx, record in enumerate(result.get("recommendations") or [], start=1)
+        ]
+        return StrategyRunResult(
+            self.key,
+            self.name,
+            result.get("trade_date") or trade_date,
+            result.get("status", "failed"),
+            int(result.get("total_scanned") or 0),
+            recommendations,
+            result.get("error"),
+            started,
+            datetime.now(),
+        )
+
+
 def get_strategy(strategy_key: str, provider=None) -> BaseStrategy:
-    provider = provider or AkshareDailyPickProvider()
+    provider = provider or AStockDataDailyPickProvider()
     strategies = {
         "first_board_relay": FirstBoardRelayStrategy,
         "leader_chase": LeaderChaseStrategy,
         "etf_rotation": EtfRotationStrategy,
+        "qlib_model": QlibModelStrategy,
     }
     if strategy_key not in strategies:
         raise ValueError(f"未知策略: {strategy_key}")
@@ -798,7 +893,7 @@ def get_strategy(strategy_key: str, provider=None) -> BaseStrategy:
 
 class DailyPickService:
     def __init__(self, provider=None):
-        self.provider = provider or AkshareDailyPickProvider()
+        self.provider = provider or AStockDataDailyPickProvider()
 
     def run_strategy(self, strategy_key: str, trade_date: Optional[str] = None) -> dict:
         resolved_date = self.provider.normalize_trade_date(trade_date)
